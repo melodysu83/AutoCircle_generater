@@ -24,13 +24,16 @@ using namespace std;
 
 //----------------------------global variables---------------------------
 ros::Publisher AutoCircle_generator;
+ros:: Subscriber RavenState_subscriber;
+
+raven_2::raven_state CURR_RAVEN_STATE;
 
 pthread_t console_thread;
 pthread_t ros_thread;
 
 tfScalar RADIUS, SPEED;
 int DIRECTION;
-bool SHOW_STATUS, TERMINATED, PAUSE;
+bool SHOW_STATUS, SHOW_SUB, TERMINATED, PAUSE;
 
 int32_t DEL_POS[6][360];
 tf::Transform TF_INCR[2][360];
@@ -40,8 +43,10 @@ tf::Transform TF_INCR[2][360];
 void computeNewTrajectory();
 int init_sys();
 bool init_ros();
-bool init_process(int argc, char** argv);
-void publish_raven_automove_ros(int PUB_INDEX, int PUB_COUNT);
+bool init_process(int, char**);
+void publish_raven_automove_ros(int , int );
+void autoRavenStateCallback(raven_2::raven_state);
+void displayRcvdMsg(int);
 int getKey();
 void outputSTATUS();
 void *console_process(void*);
@@ -108,6 +113,7 @@ int init_sys()
 	SPEED = 1;
 	DIRECTION = 1;
 	SHOW_STATUS = false;
+	SHOW_SUB = false;
 	TERMINATED = false;
 	PAUSE = false;
 	ComputeNewTrajectory();
@@ -141,6 +147,7 @@ bool init_ros()
 {
 	static ros::NodeHandle n;
   	AutoCircle_generator = n.advertise<raven_automove>("raven_automove", 1);
+	RavenState_subscriber = n.subscribe<raven_state>("raven_state",1,autoRavenStateCallback,ros::TransportHints().unreliable());
 	return true;
 }
 
@@ -195,12 +202,111 @@ void publish_raven_automove_ros(int PUB_INDEX, int PUB_COUNT)
 
 	AutoCircle_generator.publish(msg_raven_automove);
 	if(SHOW_STATUS)
-	ROS_INFO("AutoCircle_generator publish[%d]", PUB_COUNT);
+	{
+		ROS_INFO("talkerAutoCircle publish: raven_automove[%d]", PUB_COUNT);
+		SHOW_SUB = true;
+	}
 
 	ros::spinOnce();
 
 	for(int i = MAX_SPEED; i>=SPEED; i--)
 		loop_rate.sleep();
+}
+
+
+/**
+*	\fn void autoRavenStateCallback(raven_2::raven_state msg)
+*
+*	\brief This function is automatically called whenever someone publish to raven_state topic
+*
+* 	\param raven_2::raven_state msg
+*
+*	\return void
+*/
+void autoRavenStateCallback(raven_2::raven_state msg) 
+{
+	static int SUB_COUNT = 0;
+
+	//save everything in the updated raven_state 
+	//.. (some maybe uneccecary: ignore later...)
+
+	CURR_RAVEN_STATE.runlevel = msg.runlevel;
+	CURR_RAVEN_STATE.sublevel = msg.sublevel;
+	CURR_RAVEN_STATE.last_seq = msg.last_seq;
+	CURR_RAVEN_STATE.dt = msg.dt;
+
+	for(int i=0; i<2; i++)
+	{
+		CURR_RAVEN_STATE.type[i] = msg.type[i];
+		CURR_RAVEN_STATE.grasp_d[i] = msg.grasp_d[i];
+	}
+
+	for(int i=0; i<6; i++)
+	{
+		CURR_RAVEN_STATE.pos[i] = msg.pos[i];
+		CURR_RAVEN_STATE.pos_d[i] = msg.pos_d[i];
+	}
+
+	for(int i=0; i<16; i++)
+	{
+		CURR_RAVEN_STATE.mpos[i] = msg.mpos[i];
+		CURR_RAVEN_STATE.mpos_d[i] = msg.mpos_d[i];
+		CURR_RAVEN_STATE.jpos[i] = msg.jpos[i];
+		CURR_RAVEN_STATE.jpos_d[i] = msg.jpos_d[i];
+
+		CURR_RAVEN_STATE.encVals[i] = msg.encVals[i];
+		CURR_RAVEN_STATE.tau[i] = msg.tau[i];
+		CURR_RAVEN_STATE.mvel[i] = msg.mvel[i];
+		CURR_RAVEN_STATE.jvel[i] = msg.jvel[i];
+		CURR_RAVEN_STATE.encoffsets[i] = msg.encoffsets[i];
+	}
+	
+	for(int i=0; i<18; i++)
+	{
+		CURR_RAVEN_STATE.ori[i] = msg.ori[i];
+		CURR_RAVEN_STATE.ori_d[i] = msg.ori_d[i];
+	}
+
+	//display the received raven_state data
+	if(SHOW_STATUS && SHOW_SUB)
+	displayRcvdMsg(SUB_COUNT);
+
+	//update recieved data count
+	SUB_COUNT ++;
+}
+
+
+/**
+*	\fn void displayRcvdMsg(int SUB_COUNT)
+*
+*	\brief Display the recieved data from the Auto Circle Generator.
+*
+* 	\param int SUB_COUNT
+*
+*	\return void
+*/
+void displayRcvdMsg(int SUB_COUNT)
+{
+	//display the updated raven_state
+	//.. modify(add more useful stuff)
+	
+	ROS_INFO("talkerAutoCircle subscribe: raven_state[%d]", SUB_COUNT);
+
+	for(int i=0;i<3;i++)
+	cout<<"\t"<<"pos["<<i<<"] = "<<CURR_RAVEN_STATE.pos[i];
+	cout<<endl;
+	for(int i=3;i<6;i++)
+	cout<<"\t"<<"pos["<<i<<"] = "<<CURR_RAVEN_STATE.pos[i];
+	cout<<endl;
+
+	for(int i=0;i<3;i++)
+	cout<<"\t"<<"pos_d["<<i<<"] = "<<CURR_RAVEN_STATE.pos_d[i];
+	cout<<endl;
+	for(int i=0;i<3;i++)
+	cout<<"\t"<<"pos_d["<<i<<"] = "<<CURR_RAVEN_STATE.pos_d[i];
+	cout<<endl<<endl;
+	
+	SHOW_SUB = false;
 }
 
 

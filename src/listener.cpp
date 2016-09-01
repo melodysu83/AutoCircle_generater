@@ -10,15 +10,23 @@
 #include "raven_2/raven_state.h"
 #include "DS1.h" //struct param_pass is defined here.
 
+#define ROS_PUBLISH_RATE 10
+
 using namespace raven_2;
 using namespace std;
 
 //---------------------------global variables---------------------------
 ros:: Subscriber sub_automove;
-int Count;
+ros:: Publisher pub_ravenstate;
+
+raven_2::raven_state CURR_RAVEN_STATE;
+
+int SUB_COUNT;
+bool SHOW_PUB;
 static struct param_pass data1;
 tf::Quaternion Q_ori[2];
 
+pthread_t rt_thread;
 
 //-------------------------function declaration-------------------------
 void autoincrCallback(raven_2::raven_automove);
@@ -27,6 +35,10 @@ int init_ros(int, char**);
 void init_sys();
 
 void displayRcvdMsg();
+
+void publish_raven_state_ros();
+void *rt_process(void*);
+
 //---------------------------------main---------------------------------
 int main(int argc, char **argv)
 {
@@ -37,11 +49,39 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	
+	pthread_create(&rt_thread,NULL,rt_process,NULL);
+
 	ros::spin();
 	return 0;
 }
 
 //--------------------------function definition--------------------------
+/**
+*	\fn void *rt_process(void *)
+*
+* 	\brief this thread is dedicated to ros publishing of raven_state data
+*
+* 	\param a pointer to void
+*
+*	\return void
+*/
+void *rt_process(void*)
+{
+	if(ros::isInitialized())
+	{
+		while(ros::ok())
+		{
+			publish_raven_state_ros();
+		}
+		cout<<"rt_process is shutdown."<<endl;
+		return( NULL);
+	}
+	else
+		return 0;
+}
+
+
+
 /**
 *	\fn void autoincrCallback(raven_2::raven_automove msg)
 *
@@ -103,7 +143,8 @@ int init_ravenstate_publishing(ros::NodeHandle &n)  //this was in local_io.cpp
 {
 	//not include this part for now:
 	//..
-	//pub_ravenstate = n.advertise<raven_state>("ravenstate",1);
+
+	pub_ravenstate = n.advertise<raven_state>("raven_state",1);
 	sub_automove = n.subscribe<raven_automove>("raven_automove",1,autoincrCallback,ros::TransportHints().unreliable());
 
 }
@@ -120,8 +161,11 @@ int init_ravenstate_publishing(ros::NodeHandle &n)  //this was in local_io.cpp
 */
 void init_sys()
 {
+	SHOW_PUB = false;
 	Q_ori[0] =  tf::Quaternion::getIdentity();
 	Q_ori[1] =  tf::Quaternion::getIdentity();
+	cout<<"Welcome to the Auto Circle Generator for RAVEN2"<<endl;
+	cout<<"I'm waiting for the talker..."<<endl;
 	 
 }
 
@@ -138,7 +182,7 @@ void init_sys()
 int init_ros(int argc, char** argv)  //this was in rt_process_preempt.cpp
 {
 	//initialize counter
-	Count = 0;
+	SUB_COUNT = 0;
 
 	//initialize ros 
 	ros::init(argc,argv,"r2_control",ros::init_options::NoSigintHandler);
@@ -162,8 +206,8 @@ int init_ros(int argc, char** argv)  //this was in rt_process_preempt.cpp
 */
 void displayRcvdMsg()
 {
-	cout<<endl<< "new update for data1["<< Count<<"]:"<<endl;
-	Count ++;
+	ROS_INFO("listenerAutoCircle subscribe: raven_automove[%d]", SUB_COUNT);
+	SUB_COUNT ++;
 
 	for(int i=0; i<2; i++) 
 	{
@@ -175,7 +219,7 @@ void displayRcvdMsg()
 		cout<<"\tdata1.rd["<<i<<"] = ";
 		for (int j=0;j<3;j++)
 		{	
-			cout<<endl;
+			cout<<endl<<"\t\t";
 			for (int k=0;k<3;k++)
 			{
 				cout<<data1.rd[i].R[j][k]<<"\t";
@@ -183,4 +227,45 @@ void displayRcvdMsg()
 		}
 		cout<<endl;
 	}
+
+	SHOW_PUB = true;
+}
+
+
+/**
+*	\fn void publish_raven_state_ros()
+*
+*	\brief publish the auto circle command to raven_automove topic on ROS.
+*
+* 	\param void
+*
+*	\return void
+*/
+void publish_raven_state_ros()
+{
+	static int PUB_COUNT = 0;
+	static ros::Rate loop_rate(ROS_PUBLISH_RATE);
+	static raven_state msg_raven_state;
+
+	//prepare the data to publish
+	//..
+	for(int i=0;i<6;i++)
+	{
+		msg_raven_state.pos[i] = PUB_COUNT;
+		msg_raven_state.pos_d[i] = PUB_COUNT;
+	}
+	
+	pub_ravenstate.publish(msg_raven_state);
+	
+	ros::spinOnce();
+	
+	if(SHOW_PUB)
+	{
+		cout<<endl<<endl;
+		ROS_INFO("listenerAutoCircle publish: raven_state[%d]", PUB_COUNT);
+		SHOW_PUB = false;
+	}
+
+	loop_rate.sleep();
+	PUB_COUNT ++;
 }
