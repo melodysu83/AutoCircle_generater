@@ -11,6 +11,8 @@
 #include "DS1.h" //struct param_pass is defined here.
 
 #define ROS_PUBLISH_RATE 10
+#define LEFT_ARM 0  //is also the GOLD_ARM
+#define RIGHT_ARM 1 //is also the GREEN_ARM
 
 using namespace raven_2;
 using namespace std;
@@ -32,7 +34,8 @@ pthread_t rt_thread;
 void autoincrCallback(raven_2::raven_automove);
 int init_ravenstate_publishing(ros::NodeHandle &);
 int init_ros(int, char**);
-void init_sys();
+void init_sys(int, char**);
+void init_raven();
 
 void displayRcvdMsg();
 
@@ -42,12 +45,7 @@ void *rt_process(void*);
 //---------------------------------main---------------------------------
 int main(int argc, char **argv)
 {
-	init_sys();
-	if(init_ros(argc,argv))
-	{
-		cerr<<"ERROR! Fail to init ROS. Exiting.\n";
-		exit(1);
-	}
+	init_sys(argc,argv);
 	
 	pthread_create(&rt_thread,NULL,rt_process,NULL);
 
@@ -151,6 +149,31 @@ int init_ravenstate_publishing(ros::NodeHandle &n)  //this was in local_io.cpp
 
 
 /**
+*	\fn int init_sys(int argc, char** argv) 
+*
+*	\brief initialize ROS and connect the pub & sub relation.
+*
+* 	\param int argc, char** argv
+*
+*	\return void
+*/
+void init_sys(int argc, char** argv)
+{
+	init_raven();
+
+	if(init_ros(argc,argv))
+	{
+		cerr<<"ERROR! Fail to init ROS. Exiting.\n";
+		exit(1);
+	}
+
+	cout<<"Welcome to the Auto Circle Generator for RAVEN2"<<endl;
+	cout<<"I'm waiting for the talker..."<<endl;
+	 
+}
+
+
+/**
 *	\fn int init_sys() 
 *
 *	\brief initialize ROS and connect the pub & sub relation.
@@ -159,14 +182,26 @@ int init_ravenstate_publishing(ros::NodeHandle &n)  //this was in local_io.cpp
 *
 *	\return void
 */
-void init_sys()
+void init_raven()
 {
-	SHOW_PUB = false;
-	Q_ori[0] =  tf::Quaternion::getIdentity();
+	Q_ori[0] =  tf::Quaternion::getIdentity(); //.. maybe unused
 	Q_ori[1] =  tf::Quaternion::getIdentity();
-	cout<<"Welcome to the Auto Circle Generator for RAVEN2"<<endl;
-	cout<<"I'm waiting for the talker..."<<endl;
-	 
+
+	//Assume this is our raven init state
+	//..
+	data1.xd[LEFT_ARM].x = 1; 
+	data1.xd[LEFT_ARM].y = 2;
+	data1.xd[LEFT_ARM].z = 3;
+	data1.xd[RIGHT_ARM].x = 4;
+	data1.xd[RIGHT_ARM].y = 5;
+	data1.xd[RIGHT_ARM].z = 6;
+
+	for(int orii=0; orii<3;orii++)
+	for(int orij=0; orij<3;orij++)
+	{
+		data1.rd[ LEFT_ARM].R[orii][orij] = orii*3+orij;
+		data1.rd[RIGHT_ARM].R[orii][orij] = 8 + orii*3+orij;
+	}
 }
 
 
@@ -183,6 +218,7 @@ int init_ros(int argc, char** argv)  //this was in rt_process_preempt.cpp
 {
 	//initialize counter
 	SUB_COUNT = 0;
+	SHOW_PUB = false;
 
 	//initialize ros 
 	ros::init(argc,argv,"r2_control",ros::init_options::NoSigintHandler);
@@ -247,14 +283,32 @@ void publish_raven_state_ros()
 	static ros::Rate loop_rate(ROS_PUBLISH_RATE);
 	static raven_state msg_raven_state;
 
-	//prepare the data to publish
-	//..
-	for(int i=0;i<6;i++)
+	//prepare "msg_raven_state" for publishing
+	msg_raven_state.pos_d[0] = data1.xd[LEFT_ARM].x;
+	msg_raven_state.pos_d[1] = data1.xd[LEFT_ARM].y;
+	msg_raven_state.pos_d[2] = data1.xd[LEFT_ARM].z;
+	msg_raven_state.pos_d[3] = data1.xd[RIGHT_ARM].x;
+	msg_raven_state.pos_d[4] = data1.xd[RIGHT_ARM].y;
+	msg_raven_state.pos_d[5] = data1.xd[RIGHT_ARM].z;
+
+	msg_raven_state.pos[0] = data1.xd[LEFT_ARM].x; //.. actual position (should get that somehow)
+	msg_raven_state.pos[1] = data1.xd[LEFT_ARM].y;
+	msg_raven_state.pos[2] = data1.xd[LEFT_ARM].z;
+	msg_raven_state.pos[3] = data1.xd[RIGHT_ARM].x;
+	msg_raven_state.pos[4] = data1.xd[RIGHT_ARM].y;
+	msg_raven_state.pos[5] = data1.xd[RIGHT_ARM].z;
+
+	for(int orii=0; orii<3;orii++)
+	for(int orij=0; orij<3;orij++)
 	{
-		msg_raven_state.pos[i] = PUB_COUNT;
-		msg_raven_state.pos_d[i] = PUB_COUNT;
+		msg_raven_state.ori[ LEFT_ARM*9+orii*3+orij] = data1.rd[ LEFT_ARM].R[orii][orij];
+		msg_raven_state.ori[RIGHT_ARM*9+orii*3+orij] = data1.rd[RIGHT_ARM].R[orii][orij];
+		
+		//.. actual rotation (should get that somehow)
+		msg_raven_state.ori_d[ LEFT_ARM*9+orii*3+orij] = data1.rd[ LEFT_ARM].R[orii][orij];
+		msg_raven_state.ori_d[RIGHT_ARM*9+orii*3+orij] = data1.rd[RIGHT_ARM].R[orii][orij];
 	}
-	
+
 	pub_ravenstate.publish(msg_raven_state);
 	
 	ros::spinOnce();

@@ -18,6 +18,8 @@
 #define MAX_SPEED 10
 #define MIN_RADIUS 1
 #define MIN_SPEED 1
+#define LEFT_ARM 0
+#define RIGHT_ARM 1
 
 using namespace raven_2;
 using namespace std;
@@ -33,7 +35,7 @@ pthread_t ros_thread;
 
 tfScalar RADIUS, SPEED;
 int DIRECTION;
-bool SHOW_STATUS, SHOW_SUB, TERMINATED, PAUSE;
+bool SHOW_STATUS, SHOW_SUB, TERMINATED, PAUSE, SET_NULL;
 
 int32_t DEL_POS[6][360];
 tf::Transform TF_INCR[2][360];
@@ -41,6 +43,7 @@ tf::Transform TF_INCR[2][360];
 //--------------------------function declaration-------------------------
 
 void computeNewTrajectory();
+void ComputeNullTrajectory();
 int init_sys();
 bool init_ros();
 bool init_process(int, char**);
@@ -68,33 +71,84 @@ void ComputeNewTrajectory()
 {
 	for(int j=0; j<360; j++)
 	{
+		if(!SET_NULL)
+		{
+			for(int i=0; i<6; i++)
+			{
+				//DEL_POS (this seems to be actually unused)
+				DEL_POS[i][j] = 0; //.. ?is that it
+			}
+
+			for(int i=0; i<2; i++)
+			{
+				//TF_INCR
+				//..
+				// tf::Vector3 tmpVec = (tf::Scalar& x, tf::Scalar& y, tf::Scalar& z);
+				// tf::Quaternion q_temp = ;
+				tfScalar X = RADIUS;
+	 			tfScalar Y = RADIUS;
+				tfScalar Z = RADIUS;
+				tf::Vector3 tmpVec(X,Y,Z); 
+			
+				tfScalar  W = 1;
+				tfScalar QX = 2;
+				tfScalar QY = 3;
+				tfScalar QZ = 4;			
+				tf::Quaternion q_temp(QX,QY,QZ,W);
+
+				TF_INCR[i][j].setOrigin(tmpVec);   //add position increment
+				TF_INCR[i][j].setRotation(q_temp); //add rotation increment
+			}
+		}
+		else //set_null (no increment in pos and ori)
+		{
+			ComputeNullTrajectory();	
+		}
+		
+	}	
+}
+
+
+/**
+*	\fn void ComputeNullTrajectory()
+*
+* 	\brief generates no trajectory (RAVEN should stay stationary)
+*
+* 	\param void
+*
+*	\return void
+*/
+void ComputeNullTrajectory()
+{
+	for(int j=0; j<360; j++)
+	{	
 		for(int i=0; i<6; i++)
 		{
 			//DEL_POS (this seems to be actually unused)
-			DEL_POS[i][j] = 0; //.. ?is that it
+			DEL_POS[i][j] = 0; 
 		}
+		
+		tfScalar X = 0;
+		tfScalar Y = 0;
+		tfScalar Z = 0;
+		tf::Vector3 tmpVec(X,Y,Z); 
 
-		for(int i=0; i<2; i++)
-		{
-			//TF_INCR
-			//..
-			// tf::Vector3 tmpVec = (tf::Scalar& x, tf::Scalar& y, tf::Scalar& z);
-			// tf::Quaternion q_temp = ;
-			tfScalar X = RADIUS;
- 			tfScalar Y = RADIUS;
-			tfScalar Z = RADIUS;
-			tf::Vector3 tmpVec(X,Y,Z); 
-			
-			tfScalar W = 1;
-			tfScalar QX = 2;
-			tfScalar QY = 3;
-			tfScalar QZ = 4;			
-			tf::Quaternion q_temp(QX,QY,QZ,W);
+		tfScalar  W = 1;
+		tfScalar QX = 0;
+		tfScalar QY = 0;
+		tfScalar QZ = 0;			
+		tf::Quaternion q_temp(QX,QY,QZ,W);
 
-			TF_INCR[i][j].setOrigin(tmpVec); //add position increment
-			TF_INCR[i][j].setRotation(q_temp); //add rotation increment
-		}
-	}	
+		TF_INCR[LEFT_ARM][j].setOrigin(tmpVec);   //add position increment
+		TF_INCR[LEFT_ARM][j].setRotation(q_temp); //add rotation increment
+
+		TF_INCR[RIGHT_ARM][j].setOrigin(tmpVec);  
+		TF_INCR[RIGHT_ARM][j].setRotation(q_temp); 
+		
+	}
+	
+
+	
 }
 
 
@@ -116,6 +170,7 @@ int init_sys()
 	SHOW_SUB = false;
 	TERMINATED = false;
 	PAUSE = false;
+	SET_NULL = true;
 	ComputeNewTrajectory();
 
 	string start = "0";
@@ -247,7 +302,8 @@ void autoRavenStateCallback(raven_2::raven_state msg)
 		CURR_RAVEN_STATE.pos_d[i] = msg.pos_d[i];
 	}
 
-	for(int i=0; i<16; i++)
+	// you actually don't need this! :D
+	/*for(int i=0; i<16; i++) 
 	{
 		CURR_RAVEN_STATE.mpos[i] = msg.mpos[i];
 		CURR_RAVEN_STATE.mpos_d[i] = msg.mpos_d[i];
@@ -259,7 +315,7 @@ void autoRavenStateCallback(raven_2::raven_state msg)
 		CURR_RAVEN_STATE.mvel[i] = msg.mvel[i];
 		CURR_RAVEN_STATE.jvel[i] = msg.jvel[i];
 		CURR_RAVEN_STATE.encoffsets[i] = msg.encoffsets[i];
-	}
+	}*/
 	
 	for(int i=0; i<18; i++)
 	{
@@ -292,18 +348,51 @@ void displayRcvdMsg(int SUB_COUNT)
 	
 	ROS_INFO("talkerAutoCircle subscribe: raven_state[%d]", SUB_COUNT);
 
-	for(int i=0;i<3;i++)
-	cout<<"\t"<<"pos["<<i<<"] = "<<CURR_RAVEN_STATE.pos[i];
-	cout<<endl;
-	for(int i=3;i<6;i++)
-	cout<<"\t"<<"pos["<<i<<"] = "<<CURR_RAVEN_STATE.pos[i];
+	cout<<"\t"<<"pos[LEFT] = ("<<CURR_RAVEN_STATE.pos[0]<<","<<CURR_RAVEN_STATE.pos[1];
+	cout<<","<<CURR_RAVEN_STATE.pos[2]<<")\t";
+	
+	cout<<"\t"<<"pos[RIGHT] = ("<<CURR_RAVEN_STATE.pos[3]<<","<<CURR_RAVEN_STATE.pos[4];
+	cout<<","<<CURR_RAVEN_STATE.pos[5]<<")"<<endl;
+
+	cout<<"\t"<<"pos_d[LEFT] = ("<<CURR_RAVEN_STATE.pos_d[0]<<","<<CURR_RAVEN_STATE.pos_d[1];
+	cout<<","<<CURR_RAVEN_STATE.pos_d[2]<<")\t";
+	
+	cout<<"\t"<<"pos_d[RIGHT] = ("<<CURR_RAVEN_STATE.pos_d[3]<<","<<CURR_RAVEN_STATE.pos_d[4];
+	cout<<","<<CURR_RAVEN_STATE.pos_d[5]<<")"<<endl;
+
+	cout<<"\t"<<"ori[LEFT] = \t\t\tori[RIGHT] = "<<endl;
+	for(int orii=0; orii<3; orii++)
+	{
+		cout<<"\t\t";
+		for(int orij=0; orij<3; orij++)
+		{
+			cout<<CURR_RAVEN_STATE.ori[LEFT_ARM*9+orii*3+orij]<<"\t";
+		}
+		cout<<"\t";
+		for(int orij=0; orij<3; orij++)
+		{
+			cout<<CURR_RAVEN_STATE.ori[RIGHT_ARM*9+orii*3+orij]<<"\t";
+		}
+		cout<<endl;
+	}
 	cout<<endl;
 
-	for(int i=0;i<3;i++)
-	cout<<"\t"<<"pos_d["<<i<<"] = "<<CURR_RAVEN_STATE.pos_d[i];
-	cout<<endl;
-	for(int i=0;i<3;i++)
-	cout<<"\t"<<"pos_d["<<i<<"] = "<<CURR_RAVEN_STATE.pos_d[i];
+
+	cout<<"\t"<<"ori_d[LEFT_ARM] = \t\tori_d[RIGHT_ARM] = "<<endl;
+	for(int orii=0; orii<3; orii++)
+	{
+		cout<<"\t\t";
+		for(int orij=0; orij<3; orij++)
+		{
+			cout<<CURR_RAVEN_STATE.ori_d[LEFT_ARM*9+orii*3+orij]<<"\t";
+		}
+		cout<<"\t";
+		for(int orij=0; orij<3; orij++)
+		{
+			cout<<CURR_RAVEN_STATE.ori_d[RIGHT_ARM*9+orii*3+orij]<<"\t";
+		}
+		cout<<endl;
+	}
 	cout<<endl<<endl;
 	
 	SHOW_SUB = false;
@@ -357,8 +446,7 @@ void outputSTATUS()
 {
 	//.. 
 	//Make it better
-        cout<<"RADIUS = "<<RADIUS<<endl;
-	cout<<"SPEED = "<<SPEED<<endl<<endl;
+        cout<<"current AutoCircle status : (RADIUS,SPEED) = ("<<RADIUS<<","<<SPEED<<")"<<endl;
 }
 
 
