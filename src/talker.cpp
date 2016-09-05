@@ -1,28 +1,21 @@
-#include <ros/ros.h>
-#include <ros/transport_hints.h>
-#include <tf/transform_datatypes.h>
-#include <sstream>
-#include <pthread.h>
-#include "AutoCircle.h"
-
-using namespace raven_2;
-using namespace std;
-
+#include "Raven_Controller.h"
 
 int main(int argc, char **argv)
 {
 	
-	if(!init_process(argc,argv))
-		exit(1);
+	Raven_Controller ctrl;
+
+	// initialize the system
+	ctrl.initial(argc,argv); 
   	
-	pthread_create(&console_thread,NULL,console_process,NULL);
-	pthread_create(&ros_thread,NULL,ros_process,NULL);
+	// start the console_thread and ros_thread
+	ctrl.start_thread(); 
 	
+	// trigger ROS publish and subscribe update
 	ros::spin();
 
-	pthread_join(console_thread,NULL);
-	pthread_join(ros_thread,NULL);
-	finalWords();
+	// join the console_thread and ros_thread
+	ctrl.join_thread();	
 
   	exit(1);
 }

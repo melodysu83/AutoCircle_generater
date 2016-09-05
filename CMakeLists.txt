@@ -16,7 +16,7 @@ catkin_package(CATKIN_DEPENDS message_runtime)
 ## Build talker and listeneri
 include_directories(include ${catkin_INCLUDE_DIRS})
 
-add_executable(talkerAutoCircle src/talker.cpp)
+add_executable(talkerAutoCircle src/talker.cpp  src/Raven_Controller.cpp)
 target_link_libraries(talkerAutoCircle ${catkin_LIBRARIES})
 add_dependencies(talkerAutoCircle AutoCircle_test_generate_messages_cpp)
 

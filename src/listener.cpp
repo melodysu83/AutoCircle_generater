@@ -10,7 +10,7 @@
 #include "raven_2/raven_state.h"
 #include "DS1.h" //struct param_pass is defined here.
 
-#define ROS_PUBLISH_RATE 10
+#define ROS_PUBLISH_RATE 100
 #define LEFT_ARM 0  //is also the GOLD_ARM
 #define RIGHT_ARM 1 //is also the GREEN_ARM
 
@@ -23,8 +23,8 @@ ros:: Publisher pub_ravenstate;
 
 raven_2::raven_state CURR_RAVEN_STATE;
 
+int PUB_COUNT;
 int SUB_COUNT;
-bool SHOW_PUB;
 static struct param_pass data1;
 tf::Quaternion Q_ori[2];
 
@@ -37,7 +37,7 @@ int init_ros(int, char**);
 void init_sys(int, char**);
 void init_raven();
 
-void displayRcvdMsg();
+void output_STATUS();
 
 void publish_raven_state_ros();
 void *rt_process(void*);
@@ -67,9 +67,16 @@ void *rt_process(void*)
 {
 	if(ros::isInitialized())
 	{
+		ros::Time time;
+		time = time.now();
 		while(ros::ok())
 		{
 			publish_raven_state_ros();
+			if((time.now()-time).toSec() > 1)
+			{
+				output_STATUS();
+				time = time.now();
+			}
 		}
 		cout<<"rt_process is shutdown."<<endl;
 		return( NULL);
@@ -118,13 +125,7 @@ void autoincrCallback(raven_2::raven_automove msg) //this was in local_io.cpp
 			
 		}
 	}
-	
-	//display updated data1
-	displayRcvdMsg();
-
-
-	//publish raven_state
-	//..
+	SUB_COUNT ++;
 }
 
 
@@ -217,8 +218,8 @@ void init_raven()
 int init_ros(int argc, char** argv)  //this was in rt_process_preempt.cpp
 {
 	//initialize counter
+	PUB_COUNT = 0;
 	SUB_COUNT = 0;
-	SHOW_PUB = false;
 
 	//initialize ros 
 	ros::init(argc,argv,"r2_control",ros::init_options::NoSigintHandler);
@@ -232,7 +233,7 @@ int init_ros(int argc, char** argv)  //this was in rt_process_preempt.cpp
 
 
 /**
-*	\fn int displayRcvdMsg()
+*	\fn int output_STATUS()
 *
 *	\brief Display the recieved data from the Auto Circle Generator.
 *
@@ -240,10 +241,11 @@ int init_ros(int argc, char** argv)  //this was in rt_process_preempt.cpp
 *
 *	\return void
 */
-void displayRcvdMsg()
+void output_STATUS()
 {
+	cout<<endl<<endl;
+	ROS_INFO("listenerAutoCircle publish: raven_state[%d]", PUB_COUNT);
 	ROS_INFO("listenerAutoCircle subscribe: raven_automove[%d]", SUB_COUNT);
-	SUB_COUNT ++;
 
 	for(int i=0; i<2; i++) 
 	{
@@ -263,8 +265,6 @@ void displayRcvdMsg()
 		}
 		cout<<endl;
 	}
-
-	SHOW_PUB = true;
 }
 
 
@@ -279,7 +279,6 @@ void displayRcvdMsg()
 */
 void publish_raven_state_ros()
 {
-	static int PUB_COUNT = 0;
 	static ros::Rate loop_rate(ROS_PUBLISH_RATE);
 	static raven_state msg_raven_state;
 
@@ -313,12 +312,6 @@ void publish_raven_state_ros()
 	
 	ros::spinOnce();
 	
-	if(SHOW_PUB)
-	{
-		cout<<endl<<endl;
-		ROS_INFO("listenerAutoCircle publish: raven_state[%d]", PUB_COUNT);
-		SHOW_PUB = false;
-	}
 
 	loop_rate.sleep();
 	PUB_COUNT ++;
