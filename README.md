@@ -21,6 +21,7 @@ This is the big picture of what files are in this AutoCircle_generater repositor
 **/msg folder:**
     **raven_automove.msg**
     **raven_state.msg**
+    
 **/src folder:**
     **/raven_2 folder:**
       **raven_automove.h**
@@ -34,6 +35,7 @@ This is the big picture of what files are in this AutoCircle_generater repositor
     **listener.cpp** ----------------------------- (original)This will be replaced with main RAVEN software.
     **talker.cpp** ------------------------------- (original)This file is where main is.
     **tools.h**
+    
 **AutoCircle Generator flowchart.png** ----------- (original)The ROS publish/subscribe flowchart for better understanding.
 **CMakeLists.txt** ------------------------------- (original)Should merge with CMakeLists.txt in main RAVEN software.
 **README.md** ------------------------------------ (original)This file!
@@ -46,10 +48,15 @@ And since we are NOT actually connected to the main RAVEN software yet, we have 
 ## Spec : 
 These are the constraints we set for our physical device - RAVEN surgical robot arm to function normally. These are mostly defined in [PathPlanner.h](https://github.com/melodysu83/AutoCircle_generater/blob/master/src/Raven_PathPlanner.h) file under /src folder. Be careful when tuning these values!
 1. **publish rate** : The raven_automove.msg is being sent at 100 Hz.
+
 2. **feedback rate** : The raven_state.msg is being sent at 100 Hz in listener.cpp. But in actual RAVEN software, raven_state.msg is updated at 1000 Hz.
+
 3. **DEL_POS_THRESHOLD** : This is the motion translation threshold for RAVEN to move. It is set as 3000 micro meter (=3 mm = 0.3 cm). That being said, the maximum speed that RAVEN will be moving is 100 Hz * 0.3 cm = 30 (cm/sec).
+
 4. **DEL_ROT_THRESHOLD** : This is the motion rotation threshold for RAVEN to move. It is set to be 2.5 degrees. That being said, the maximum rotational speed for RAVEN will be is 100 Hz * 2.5 degrees cm = 250 (degrees/sec). This is currently unused because the circle trajectoy we have now does NOT include orientation motion.
+
 5. **RADIUS levels** : There are ten levels of RADIUS to choose from. Level 1 ~ 10 corresponds to 10000 micro meter (=10 mm = 1cm) ~ 100000 micro meter (=100 mm = 10cm).
+
 6. **SPEED levels** : There are ten levels of SPEED to choose from. Level 1 ~ 10 corresponds to moving 0.3mm/per command ~ 3mm/per command (which is exactly DEL_POS_THRESHOLD).
 
 
