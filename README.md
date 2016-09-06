@@ -19,22 +19,22 @@ The two ROS nodes talkerAutoCircle and listenerAutoCircle exchange information t
 This is the big picture of what files are in this AutoCircle_generater repository and what are each files are for. Note that only the ones specified as (original) are the original files created here, others are copied from the main RAVEN software and do NOT need to copy again to the main RAVEN software when combining. 
 
 **/msg folder:**
-    **raven_automove.msg**
-    **raven_state.msg**
+----**raven_automove.msg**
+----**raven_state.msg**
     
 **/src folder:**
-    **/raven_2 folder:**
-      **raven_automove.h**
-      **raven_state.h**
-    **DS0.h**
-    **DS1.h**
-    **Raven_Controller.cpp** --------------------- (original)
-    **Raven_Controller.h** ----------------------- (original)This class controls the threads and workflow.
-    **Raven_PathPlanner.cpp** -------------------- (original)
-    **Raven_PathPlanner.h** ---------------------- (original)This class defines all the math and path planning.
-    **listener.cpp** ----------------------------- (original)This will be replaced with main RAVEN software.
-    **talker.cpp** ------------------------------- (original)This file is where main is.
-    **tools.h**
+----**/raven_2 folder:**
+--------**raven_automove.h**
+--------**raven_state.h**
+----**DS0.h**
+----**DS1.h**
+----**Raven_Controller.cpp** --------------------- (original)
+----**Raven_Controller.h** ----------------------- (original)This class controls the threads and workflow.
+----**Raven_PathPlanner.cpp** -------------------- (original)
+----**Raven_PathPlanner.h** ---------------------- (original)This class defines all the math and path planning.
+----**listener.cpp** ----------------------------- (original)This will be replaced with main RAVEN software.
+----**talker.cpp** ------------------------------- (original)This file is where main is.
+----**tools.h**
     
 **AutoCircle Generator flowchart.png** ----------- (original)The ROS publish/subscribe flowchart for better understanding.
 **CMakeLists.txt** ------------------------------- (original)Should merge with CMakeLists.txt in main RAVEN software.
