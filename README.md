@@ -64,6 +64,7 @@ And since we are NOT actually connected to the main RAVEN software yet, we have 
 
 ## Spec : 
 These are the constraints we set for our physical device - RAVEN surgical robot arm to function normally. These are mostly defined in [PathPlanner.h](https://github.com/melodysu83/AutoCircle_generater/blob/master/src/Raven_PathPlanner.h) file under /src folder. Be careful when tuning these values!
+
 1. **publish rate** : The raven_automove.msg is being sent at 100 Hz.
 
 2. **feedback rate** : The raven_state.msg is being sent at 100 Hz in listener.cpp. But in actual RAVEN software, raven_state.msg is updated at 1000 Hz.
