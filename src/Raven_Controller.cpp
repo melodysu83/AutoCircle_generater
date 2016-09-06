@@ -36,6 +36,7 @@ void Raven_Controller::initial(int argc, char** argv)
 		exit(1);
   	}
 	
+	init_pathplanner();
 	//print the welcome greets on console
 	init_words();
 }
@@ -60,9 +61,10 @@ void Raven_Controller::init_sys()
 	this->PUB_COUNT = 0;
 	this->SUB_COUNT = 0;
 
+	this->RECEIVED_FIRST = false;
 	this->SHOW_STATUS = false;
 	this->PAUSE = false;
-	this->SEND_NULL = true;
+	
 }
 
 
@@ -86,6 +88,42 @@ bool Raven_Controller::init_ros(int argc, char** argv)
 	RavenState_subscriber   = n.subscribe("raven_state",1,&Raven_Controller::callback_raven_state,this,ros::TransportHints().unreliable());
 
 	return true;
+}
+
+
+
+/**
+*	\fn void init_pathplanner) 
+*
+*	\brief initialize objects from Raven_PathPlanner class.
+*
+* 	\param void
+*
+*	\return void
+*/
+void Raven_Controller::init_pathplanner()  
+{
+	if(!LEFT_PATH.set_ArmType(LEFT_ARM) || !RIGHT_PATH.set_ArmType(RIGHT_ARM))
+	{
+		ROS_ERROR("Fail to set RAVEN arm type. Exiting!");
+		exit(1);
+	}
+	if(!LEFT_PATH.set_Radius(RADIUS) || !RIGHT_PATH.set_Radius(RADIUS))
+	{
+		ROS_ERROR("Fail to set circle radius. Exiting!");
+		exit(1);
+	}
+	if(!LEFT_PATH.set_Speed(SPEED) || !RIGHT_PATH.set_Speed(SPEED))
+	{
+		ROS_ERROR("Fail to set circle speed. Exiting!");
+		exit(1);
+	}
+	if(!LEFT_PATH.set_Direction(DIRECTION) || !RIGHT_PATH.set_Direction(DIRECTION))
+	{
+		ROS_ERROR("Fail to set circle direction. Exiting!");
+		exit(1);
+	}
+
 }
 
 
@@ -141,6 +179,7 @@ bool Raven_Controller::menu_words(bool print_menu)
 		cout<<"\t'5' : Toggle circling direction"<<endl;
 		cout<<"\t'6' : Toggle pause/resume "<<endl;
 		cout<<"\t'7' : Toggle console messages"<<endl;
+		cout<<"\t'8' : Set as Circle Center."<<endl;
 		cout<<"\t'^C': Quit"<<endl<<endl;
 	}
 	return false;
@@ -232,6 +271,8 @@ void* Raven_Controller::console_process(void)
 				case '1':
 				{
 					RADIUS = (RADIUS+1 > MAX_RADIUS) ? MAX_RADIUS : RADIUS+1;
+					LEFT_PATH.set_Radius(RADIUS);
+					RIGHT_PATH.set_Radius(RADIUS);
 
 					cout<<"You chose 1 : Increase Circle Radius."<<endl;
 					cout<<"\tnew RADIUS = "<<RADIUS<<endl;
@@ -241,6 +282,8 @@ void* Raven_Controller::console_process(void)
 				case '2':
 				{
 					RADIUS = (RADIUS-1 < MIN_RADIUS) ? MIN_RADIUS : RADIUS-1;
+					LEFT_PATH.set_Radius(RADIUS);
+					RIGHT_PATH.set_Radius(RADIUS);
 
 					cout<<"You chose 2 : Decrease Circle Radius."<<endl;
 					cout<<"\tnew RADIUS = "<<RADIUS<<endl;
@@ -250,6 +293,8 @@ void* Raven_Controller::console_process(void)
 				case '3':
 				{
 					SPEED = (SPEED+1 > MAX_SPEED) ? MAX_SPEED : SPEED+1;
+					LEFT_PATH.set_Speed(SPEED);
+					RIGHT_PATH.set_Speed(SPEED);
 
 					cout<<"You chose 3 : Increase Raven Moving Speed."<<endl;
 					cout<<"\tnew SPEED = "<<SPEED<<endl;
@@ -259,6 +304,8 @@ void* Raven_Controller::console_process(void)
 				case '4':
 				{
 					SPEED = (SPEED-1 < MIN_SPEED) ? MIN_SPEED : SPEED-1;
+					LEFT_PATH.set_Speed(SPEED);
+					RIGHT_PATH.set_Speed(SPEED);
 
 					cout<<"You chose 4 : Decrease Raven Moving Speed."<<endl;
 					cout<<"\tnew SPEED = "<<SPEED<<endl;
@@ -269,12 +316,14 @@ void* Raven_Controller::console_process(void)
 				{
 
 					DIRECTION = DIRECTION*(-1);
-					
+					LEFT_PATH.set_Direction(DIRECTION);
+					RIGHT_PATH.set_Direction(DIRECTION);
+
 					cout<<"You chose 5 : Toggle circling direction."<<endl;
 					if(DIRECTION > 0)
-						cout<<"Change to clockwise circle trajectory."<<endl;
+						cout<<"\tChange to counter-clockwise circle trajectory."<<endl;
 					else
-						cout<<"Change to counter-clockwise circle trajectory."<<endl;
+						cout<<"\tChange to clockwise circle trajectory."<<endl;
 					print_menu = true;
 					break;
 				}
@@ -284,9 +333,9 @@ void* Raven_Controller::console_process(void)
 
 					cout<<"You chose 6 : Toggle pause/resume."<<endl;
 					if(PAUSE)
-						cout<<"AutoCircling is paused."<<endl;
+						cout<<"\tAutoCircling is paused."<<endl;
 					else
-						cout<<"AutoCircling is resumed."<<endl;
+						cout<<"\tAutoCircling is resumed."<<endl;
 					print_menu = true;
 					break;
 				}
@@ -296,13 +345,26 @@ void* Raven_Controller::console_process(void)
 
 					cout<<"You chose 7 : Toggle console messages."<<endl;
 					if(SHOW_STATUS)
-						cout<<"Console message turned on."<<endl;
+						cout<<"\tConsole message turned on."<<endl;
 					else
-						cout<<"Console message turned off."<<endl;
+						cout<<"\tConsole message turned off."<<endl;
 					print_menu = true;
 					break;
 				}		
-			
+				case '8':
+				{
+					LEFT_PATH.set_Center(CURR_RAVEN_STATE.pos);
+					RIGHT_PATH.set_Center(CURR_RAVEN_STATE.pos);
+
+					cout<<"You chose 8 : Set as Circle Center."<<endl;
+					cout<<"\tnew Center[LEFT]: X,Y,Z = ("<<CURR_RAVEN_STATE.pos[0]<<",";
+					cout<<CURR_RAVEN_STATE.pos[1]<<","<<CURR_RAVEN_STATE.pos[2]<<")"<<endl;
+					cout<<"\tnew Center[RIGHT]: X,Y,Z = ("<<CURR_RAVEN_STATE.pos[3]<<",";
+					cout<<CURR_RAVEN_STATE.pos[4]<<","<<CURR_RAVEN_STATE.pos[5]<<")"<<endl;
+					print_menu = true;
+					break;
+				}
+	
 			}
 
 			if(SHOW_STATUS && (time.now()-time).toSec() > 1)
@@ -332,40 +394,48 @@ void* Raven_Controller::ros_process(void)
 {
 	if(ros::isInitialized())
 	{
-		while(ros::ok() && !PAUSE)
+		if(!RECEIVED_FIRST)
+			cout<<endl<<"Waiting for the first receive of raven_state..."<<endl;
+		else
 		{
-			
-			// (1) generate new command (plan trajectory)
-			//..
-			/*
+			cout<<"First raven_state received."<<endl;
+			cout<<"Save as default center potition."<<endl;
+	
+			LEFT_PATH.set_Center(CURR_RAVEN_STATE.pos);
+			RIGHT_PATH.set_Center(CURR_RAVEN_STATE.pos);
+		}
+
+		while(ros::ok() && RECEIVED_FIRST)
+		{
+			// (1) update current raven_state (for future computation uses)
+			LEFT_PATH.set_Current_Pos(CURR_RAVEN_STATE.pos);
+			LEFT_PATH.set_Current_Ori(CURR_RAVEN_STATE.ori);
+
+			RIGHT_PATH.set_Current_Pos(CURR_RAVEN_STATE.pos);
+			RIGHT_PATH.set_Current_Ori(CURR_RAVEN_STATE.ori);
+
+			// (2) generate new command (plan trajectory)
 			if(PAUSE) 
-				ComputeNullTrajectory(); // stop raven
+			{
+				// stop raven
+				TF_INCR[LEFT_ARM] = LEFT_PATH.ComputeNullTrajectory(); 
+				TF_INCR[RIGHT_ARM] = RIGHT_PATH.ComputeNullTrajectory(); 
+			}
 			else 
-				ComputeTrajectory();	 // normal moving case
-			*/
+			{
 
-			tfScalar X = 0;
-			tfScalar Y = 0;
-			tfScalar Z = 0;
-			tf::Vector3 tmpVec(X,Y,Z); 
+				// normal moving case
+				TF_INCR[LEFT_ARM] = LEFT_PATH.ComputeCircleTrajectory();
+				TF_INCR[RIGHT_ARM] = RIGHT_PATH.ComputeCircleTrajectory();
+			}
 
-			tfScalar  W = 1;
-			tfScalar QX = 0;
-			tfScalar QY = 0;
-			tfScalar QZ = 0;			
-			tf::Quaternion q_temp(QX,QY,QZ,W);
-
-			TF_INCR[LEFT_ARM].setOrigin(tmpVec);   //add position increment
-			TF_INCR[LEFT_ARM].setRotation(q_temp); //add rotation increment
-
-			TF_INCR[RIGHT_ARM].setOrigin(tmpVec);  
-			TF_INCR[RIGHT_ARM].setRotation(q_temp); 
-
-			// (2) publish new command (send it out)
+			// (3) publish new command (send it out)
 			publish_raven_automove();
 
 		}
-		cout<<"ros_process is shutdown."<<endl;
+
+		if(RECEIVED_FIRST)
+			cout<<"ros_process is shutdown."<<endl;
 	}
 	return 0;
 }
@@ -403,8 +473,8 @@ void Raven_Controller::publish_raven_automove()
 	// (1) wrap up the new command	
 	msg_raven_automove.hdr.stamp = msg_raven_automove.hdr.stamp.now(); //hdr
 
-	tf::transformTFToMsg(TF_INCR[0], msg_raven_automove.tf_incr[0]);   //tf_incr
-	tf::transformTFToMsg(TF_INCR[1], msg_raven_automove.tf_incr[1]);
+	tf::transformTFToMsg(TF_INCR[LEFT_ARM], msg_raven_automove.tf_incr[LEFT_ARM]);   //tf_incr
+	tf::transformTFToMsg(TF_INCR[RIGHT_ARM], msg_raven_automove.tf_incr[RIGHT_ARM]);
 
 	// (2) send new command
 	RavenAutomove_publisher.publish(msg_raven_automove);
@@ -454,6 +524,7 @@ void Raven_Controller::callback_raven_state(raven_2::raven_state msg)
 
 	// (2) update recieved data count
 	SUB_COUNT ++;
+	RECEIVED_FIRST = true;
 }
 
 
@@ -515,12 +586,47 @@ void autoRavenStateCallback(boost::shared_ptr< ::raven_state_<ContainerAllocator
 */
 void Raven_Controller::output_STATUS()
 {
-        cout<<"current AutoCircle status : (RADIUS,SPEED) = ("<<RADIUS<<","<<SPEED<<")"<<endl;
+        cout<<"current AutoCircle status : (RADIUS,SPEED) = ("<<RADIUS<<"0000 micro meter, level "<<SPEED<<")"<<endl;
 	
+	output_PATHinfo();
 	output_PUBinfo();
 	output_SUBinfo();
 	
 }
+
+
+
+/**
+*	\fn void output_PATHinfo()
+*
+* 	\brief shows the publish status (display every one sec)
+*
+* 	\param void
+*
+*	\return void
+*/
+void Raven_Controller::output_PATHinfo()
+{
+	cout<<"current PathPlanner status : "<<endl;
+	
+	cout<<"\t";
+	LEFT_PATH.show_Center();
+	LEFT_PATH.show_delPos();
+	cout<<endl;
+
+	cout<<"\t";
+	RIGHT_PATH.show_Center();
+	RIGHT_PATH.show_delPos();
+	cout<<endl;
+
+	cout<<"\t";
+	LEFT_PATH.show_PathState();
+	RIGHT_PATH.show_PathState();
+	
+	cout<<endl<<endl;
+		
+}
+
 
 
 
@@ -555,19 +661,10 @@ void Raven_Controller::output_SUBinfo()
 
 	//raven position
 	cout<<"\t"<<"pos[LEFT] = ("<<CURR_RAVEN_STATE.pos[0]<<","<<CURR_RAVEN_STATE.pos[1];
-	cout<<","<<CURR_RAVEN_STATE.pos[2]<<")\t";
+	cout<<","<<CURR_RAVEN_STATE.pos[2]<<")"<<endl;
 	
 	cout<<"\t"<<"pos[RIGHT] = ("<<CURR_RAVEN_STATE.pos[3]<<","<<CURR_RAVEN_STATE.pos[4];
 	cout<<","<<CURR_RAVEN_STATE.pos[5]<<")"<<endl;
-
-	/*
-	//raven desired position (not important)
-	cout<<"\t"<<"pos_d[LEFT] = ("<<CURR_RAVEN_STATE.pos_d[0]<<","<<CURR_RAVEN_STATE.pos_d[1];
-	cout<<","<<CURR_RAVEN_STATE.pos_d[2]<<")\t";
-	
-	cout<<"\t"<<"pos_d[RIGHT] = ("<<CURR_RAVEN_STATE.pos_d[3]<<","<<CURR_RAVEN_STATE.pos_d[4];
-	cout<<","<<CURR_RAVEN_STATE.pos_d[5]<<")"<<endl;
-	*/
 
 	// raven rotation
 	cout<<"\t"<<"ori[LEFT] = \t\t\tori[RIGHT] = "<<endl;
