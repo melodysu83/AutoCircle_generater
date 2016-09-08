@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>AutoCircle_test</name>
+  <name>simple_test</name>
   <version>0.1.0</version>
-  <description>The AutoCircle generator package</description>
+  <description>The simple_test package</description>
 
   <maintainer email="you@yourdomain.tld">Your Name</maintainer>
   <license>BSD</license>
