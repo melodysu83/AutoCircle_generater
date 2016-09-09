@@ -285,11 +285,43 @@ void Raven_PathPlanner::checkPathState()
 {
 	PathState = AROUND_CIRCLE;
 
-	if(Distance == 0 || Distance > Radius+Speed || Distance < abs(Radius-Speed))
+	if(Distance == 0 || Distance > Radius+STATE_THRESHOLD || Distance < abs(Radius-STATE_THRESHOLD))
 		PathState = MOVETO_CIRCLE;
 }
 
 
+
+/**
+*	\fn tfScalar get_Radius()
+*
+* 	\brief returns the current radius (in cm)
+*
+* 	\param void
+*
+*	\return tfScalar
+*/
+tfScalar Raven_PathPlanner::get_Radius()
+{
+	tfScalar R = Radius/10000; // in cm
+	return R;
+}
+
+
+
+/**
+*	\fn tfScalar get_Speed()
+*
+* 	\brief stores the current position received from raven_state
+*
+* 	\param void
+*
+*	\return tfScalar
+*/
+tfScalar Raven_PathPlanner::get_Speed()
+{
+	tfScalar SP = Speed*ROS_PUBLISH_RATE/10000; // in cm/sec
+	return SP;
+}
 
 /**
 *	\fn void show_PathState()
@@ -305,22 +337,22 @@ void Raven_PathPlanner::show_PathState()
 	if(ArmType == LEFT_ARM)
 	{
 		if(PathState == MOVETO_CIRCLE)
-  		cout<<"PathState[LEFT] = MOVETO_CIRCLE\t";
+  			cout<<"\tPathState[LEFT] = MOVETO_CIRCLE"<<endl;
 
 		else if(PathState == AROUND_CIRCLE)
-			cout<<"PathState[LEFT]  = AROUND_CIRCLE\t";
+			cout<<"\tPathState[LEFT]  = AROUND_CIRCLE"<<endl;
 		else
-			cout<<"PathState[LEFT]  = undefined!\t";
+			cout<<"\tPathState[LEFT]  = undefined!"<<endl;
 	}
 	else if(ArmType == RIGHT_ARM)
 	{
 		if(PathState == MOVETO_CIRCLE)
-  		cout<<"PathState[RIGHT] = MOVETO_CIRCLE\t";
+  			cout<<"\tPathState[RIGHT] = MOVETO_CIRCLE"<<endl;
 
 		else if(PathState == AROUND_CIRCLE)
-			cout<<"PathState[RIGHT]  = AROUND_CIRCLE\t";
+			cout<<"\tPathState[RIGHT]  = AROUND_CIRCLE"<<endl;
 		else
-			cout<<"PathState[RIGHT]  = undefined!\t";
+			cout<<"\tPathState[RIGHT]  = undefined!"<<endl;
 	}
 	
 }
@@ -344,12 +376,12 @@ void Raven_PathPlanner::show_Center()
 
 	if(ArmType == LEFT_ARM)
 	{
-		cout<<"Center[LEFT]("<<x<<","<<y<<","<<z<<")\t";
+		cout<<"\tCenter[LEFT]("<<x<<","<<y<<","<<z<<")"<<endl;
 
 	}
 	else if(ArmType == RIGHT_ARM)
 	{
-		cout<<"Center[RIGHT]("<<x<<","<<y<<","<<z<<")\t";
+		cout<<"\tCenter[RIGHT]("<<x<<","<<y<<","<<z<<")"<<endl;
 	}
 }
 
@@ -372,12 +404,12 @@ void Raven_PathPlanner::show_delPos()
 
 	if(ArmType == LEFT_ARM)
 	{
-		cout<<"delPos[LEFT]("<<x<<","<<y<<","<<z<<")\t";
+		cout<<"\tdelPos[LEFT]("<<x<<","<<y<<","<<z<<")"<<endl;
 
 	}
 	else if(ArmType == RIGHT_ARM)
 	{
-		cout<<"delPos[RIGHT]("<<x<<","<<y<<","<<z<<")\t";
+		cout<<"\tdelPos[RIGHT]("<<x<<","<<y<<","<<z<<")"<<endl;
 	}
 	
 	
@@ -430,7 +462,7 @@ tf::Transform Raven_PathPlanner::ComputeCircleTrajectory()
 			{
 				Delta_Pos.setValue(0,Speed,0);
 			}
-			else if(Distance > Radius + Speed) // out of circle : need to move back in
+			else if(Distance > Radius + STATE_THRESHOLD) // out of circle : need to move back in
 			{
 				Delta_Pos.normalize();
 
@@ -439,7 +471,7 @@ tf::Transform Raven_PathPlanner::ComputeCircleTrajectory()
 				else
 					Delta_Pos = - Speed * Delta_Pos;
 			}
-			else if(Distance < abs(Radius-Speed)) // inside circle : need to move outward
+			else if(Distance < abs(Radius-STATE_THRESHOLD)) // inside circle : need to move outward
 			{
 				Delta_Pos.normalize();
 
@@ -448,11 +480,11 @@ tf::Transform Raven_PathPlanner::ComputeCircleTrajectory()
 				else
 					Delta_Pos = Speed * Delta_Pos;
 			}
-
 			break;
 
 		case AROUND_CIRCLE:  // in orbit case
-			AutoCircleMotion2();
+			//AutoCircleMotion2();
+			AutoCircleMotion3();
 			break;
 
 		default:
@@ -493,7 +525,7 @@ tf::Transform Raven_PathPlanner::ComputeNullTrajectory()
 	tfScalar X = 0;
 	tfScalar Y = 0;
 	tfScalar Z = 0;
-	tf::Vector3 tmpVec(X,Y,Z); 
+	Delta_Pos.setValue(X,Y,Z); 
 
 	tfScalar  W = 1;
 	tfScalar QX = 0;
@@ -501,7 +533,7 @@ tf::Transform Raven_PathPlanner::ComputeNullTrajectory()
 	tfScalar QZ = 0;			
 	tf::Quaternion q_temp(QX,QY,QZ,W);
 
-	TF_INCR.setOrigin(tmpVec);   //add position increment
+	TF_INCR.setOrigin(Delta_Pos);   //add position increment
 	TF_INCR.setRotation(q_temp); 		  //add rotation increment
 
 	return TF_INCR;
@@ -621,7 +653,6 @@ void Raven_PathPlanner::AutoCircleMotion1()
 *	\fn void AutoCircleMotion2()
 *
 * 	\brief this is the second algorithm for circle trajectory generation
-*              (the version that we actually use)
 *
 * 	\param void
 *
@@ -645,12 +676,131 @@ void Raven_PathPlanner::AutoCircleMotion2()
 
 	del_Vector = nxt_Vector - now_Vector;
 
-	if(del_Vector.length() > DEL_POS_THRESHOLD)	
-		del_Vector = del_Vector.normalized()*DEL_POS_THRESHOLD;
+	if(del_Vector.length() > Speed)	
+		del_Vector = del_Vector.normalized()*Speed;
 
 	Delta_Pos.setValue(0,del_Vector.getY(),del_Vector.getZ());
 }
 
 
+/**
+*	\fn void AutoCircleMotion3()
+*
+* 	\brief this is the third algorithm for circle trajectory generation
+*              (the version that we actually use)
+* 	\param void
+*
+*	\return void
+*/
+void Raven_PathPlanner::AutoCircleMotion3()
+{
+	tf::Vector3 now_Vector = Current_Pos - Center;
+	tf::Vector3 del_Vector1,del_Vector2;
 
+	tfScalar Y = now_Vector.getY();
+	tfScalar Z = now_Vector.getZ();
+
+	if(Y>0)
+	{
+		if(Z>0)
+		{
+			if(abs(Y)>=abs(Z)) // octant 1
+			{
+				del_Vector2.setValue(0,     0,Speed);
+				del_Vector1.setValue(0,-Speed,Speed);
+			}
+			else // octant 2
+			{
+				del_Vector1.setValue(0,-Speed,    0);
+				del_Vector2.setValue(0,-Speed,Speed);
+			}
+		}
+		else if(Z<0)
+		{
+			if(abs(Y)>=abs(Z)) // octant 8
+			{
+				del_Vector1.setValue(0,    0,Speed);
+				del_Vector2.setValue(0,Speed,Speed);
+			}
+			else // octant 7
+			{
+				del_Vector2.setValue(0,Speed,    0);
+				del_Vector1.setValue(0,Speed,Speed);
+			}
+		}
+		else // Z=0
+		{
+			del_Vector1.setValue(0,0,Speed);
+			del_Vector2.setValue(0,0,Speed);
+		}	
+	}
+	else if(Y<0)
+	{
+		if(Z>0)
+		{
+			if(abs(Y)>=abs(Z)) // octant 4
+			{
+				del_Vector1.setValue(0,     0,-Speed);
+				del_Vector2.setValue(0,-Speed,-Speed);
+			}
+			else // octant 3
+			{
+				del_Vector2.setValue(0,-Speed,     0);
+				del_Vector1.setValue(0,-Speed,-Speed);
+			}
+		}
+		else if(Z<0)
+		{
+			if(abs(Y)>=abs(Z)) // octant 5
+			{
+				del_Vector2.setValue(0,    0,-Speed);
+				del_Vector1.setValue(0,Speed,-Speed);
+			}
+			else // octant 6
+			{
+				del_Vector1.setValue(0,Speed,    0);
+				del_Vector2.setValue(0,Speed,-Speed);
+			}
+		}
+		else // Z=0
+		{
+			del_Vector1.setValue(0,0,-Speed);
+			del_Vector2.setValue(0,0,-Speed);
+		}	
+	}
+	else // Y=0
+	{
+		if(Z>0)
+		{
+			del_Vector1.setValue(0,-Speed,0);
+			del_Vector2.setValue(0,-Speed,0);
+		}
+		else if(Z<0)
+		{
+			del_Vector1.setValue(0,Speed,0);
+			del_Vector2.setValue(0,Speed,0);
+		}
+	}
+	
+	del_Vector1 = del_Vector1 * Direction;
+	del_Vector2 = del_Vector2 * Direction;
+	
+	tf::Vector3 nxt_Vector = Current_Pos+(del_Vector1+del_Vector2)/2-Center;
+
+	if(Direction == 1)
+	{
+		if(nxt_Vector.length() > Radius)
+			Delta_Pos.setValue(0,del_Vector1.getY(),del_Vector1.getZ());
+		else
+			Delta_Pos.setValue(0,del_Vector2.getY(),del_Vector2.getZ());
+	}
+	else // Direction == -1
+	{
+		if(nxt_Vector.length() > Radius)
+			Delta_Pos.setValue(0,del_Vector2.getY(),del_Vector2.getZ());
+		else
+			Delta_Pos.setValue(0,del_Vector1.getY(),del_Vector1.getZ());
+	}
+
+}
 
