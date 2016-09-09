@@ -85,7 +85,7 @@ bool Raven_Controller::init_ros(int argc, char** argv)
 
 	static ros::NodeHandle n;
   	RavenAutomove_publisher = n.advertise<raven_automove>("raven_automove", 1);
-	RavenState_subscriber   = n.subscribe("raven_state",1,&Raven_Controller::callback_raven_state,this,ros::TransportHints().unreliable());
+	RavenState_subscriber   = n.subscribe("ravenstate",1,&Raven_Controller::callback_raven_state,this);
 
 	return true;
 }
@@ -423,10 +423,10 @@ void* Raven_Controller::ros_process(void)
 			}
 			else 
 			{
-
 				// normal moving case
 				TF_INCR[LEFT_ARM] = LEFT_PATH.ComputeCircleTrajectory();
 				TF_INCR[RIGHT_ARM] = RIGHT_PATH.ComputeCircleTrajectory();
+
 			}
 
 			// (3) publish new command (send it out)
@@ -480,7 +480,7 @@ void Raven_Controller::publish_raven_automove()
 	RavenAutomove_publisher.publish(msg_raven_automove);
 	ros::spinOnce();
 
-	// (3) prepare for next publish
+	//(3) prepare for next publish
 	loop_rate.sleep();
 	PUB_COUNT ++;
 }
@@ -586,7 +586,12 @@ void autoRavenStateCallback(boost::shared_ptr< ::raven_state_<ContainerAllocator
 */
 void Raven_Controller::output_STATUS()
 {
-        cout<<"current AutoCircle status : (RADIUS,SPEED) = ("<<RADIUS<<"0000 micro meter, level "<<SPEED<<")"<<endl;
+	tfScalar R = LEFT_PATH.get_Radius(); 		// in cm
+	tfScalar SP = LEFT_PATH.get_Speed(); 	// in cm/sec
+
+        cout<<"current AutoCircle status :"<<endl;
+	cout<<"\tRADIUS = "<<R<<" cm \t(level "<<RADIUS<<")"<<endl;
+	cout<<"\tSPEED  = "<<SP<<" cm/sec\t(level "<<SPEED<<")"<<endl<<endl;
 	
 	output_PATHinfo();
 	output_PUBinfo();
@@ -609,19 +614,14 @@ void Raven_Controller::output_PATHinfo()
 {
 	cout<<"current PathPlanner status : "<<endl;
 	
-	cout<<"\t";
 	LEFT_PATH.show_Center();
+	//RIGHT_PATH.show_Center(); 	//(RIGHT_ARM unused right now)
+
 	LEFT_PATH.show_delPos();
-	cout<<endl;
-
-	cout<<"\t";
-	RIGHT_PATH.show_Center();
-	RIGHT_PATH.show_delPos();
-	cout<<endl;
-
-	cout<<"\t";
+	//RIGHT_PATH.show_delPos(); 	//(RIGHT_ARM unused right now)
+	
 	LEFT_PATH.show_PathState();
-	RIGHT_PATH.show_PathState();
+	//RIGHT_PATH.show_PathState(); 	//(RIGHT_ARM unused right now)
 	
 	cout<<endl<<endl;
 		
@@ -663,11 +663,12 @@ void Raven_Controller::output_SUBinfo()
 	cout<<"\t"<<"pos[LEFT] = ("<<CURR_RAVEN_STATE.pos[0]<<","<<CURR_RAVEN_STATE.pos[1];
 	cout<<","<<CURR_RAVEN_STATE.pos[2]<<")"<<endl;
 	
-	cout<<"\t"<<"pos[RIGHT] = ("<<CURR_RAVEN_STATE.pos[3]<<","<<CURR_RAVEN_STATE.pos[4];
-	cout<<","<<CURR_RAVEN_STATE.pos[5]<<")"<<endl;
+	//cout<<"\t"<<"pos[RIGHT] = ("<<CURR_RAVEN_STATE.pos[3]<<","<<CURR_RAVEN_STATE.pos[4];
+	//cout<<","<<CURR_RAVEN_STATE.pos[5]<<")"<<endl;
 
 	// raven rotation
-	cout<<"\t"<<"ori[LEFT] = \t\t\tori[RIGHT] = "<<endl;
+	//cout<<"\t"<<"ori[LEFT] = \t\t\tori[RIGHT] = "<<endl;
+	cout<<"\t"<<"ori[LEFT] = "<<endl;
 	for(int orii=0; orii<3; orii++)
 	{
 		cout<<"\t\t";
@@ -675,11 +676,11 @@ void Raven_Controller::output_SUBinfo()
 		{
 			cout<<CURR_RAVEN_STATE.ori[LEFT_ARM*9+orii*3+orij]<<"\t";
 		}
-		cout<<"\t";
-		for(int orij=0; orij<3; orij++)
-		{
-			cout<<CURR_RAVEN_STATE.ori[RIGHT_ARM*9+orii*3+orij]<<"\t";
-		}
+		//cout<<"\t";
+		//for(int orij=0; orij<3; orij++)
+		//{
+		//	cout<<CURR_RAVEN_STATE.ori[RIGHT_ARM*9+orii*3+orij]<<"\t";
+		//}
 		cout<<endl;
 	}
 	cout<<endl;
