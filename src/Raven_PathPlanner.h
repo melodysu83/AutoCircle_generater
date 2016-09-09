@@ -15,23 +15,23 @@
 #include <pthread.h>
 #include <termios.h>
 #include <queue>
-#include "raven_2/raven_automove.h"
-#include "raven_2/raven_state.h"
-
+#include "/home/biorobotics/rosworkspace/src/raven_2/msg_gen/cpp/include/raven_2/raven_automove.h"
+#include "/home/biorobotics/rosworkspace/src/raven_2/msg_gen/cpp/include/raven_2/raven_state.h"
 
 #define LEFT_ARM 0
 #define RIGHT_ARM 1
 
-#define MAX_RADIUS 10  // 10 different radius levels
+#define MAX_RADIUS 3  // 3 different radius levels
 #define MAX_SPEED 10   // 10 different speed levels
 #define MIN_RADIUS 1
 #define MIN_SPEED 1
 
-#define RADIUS_level_TO_microm 10000  //in micro meter (= 10mm = 1cm)
+#define RADIUS_level_TO_microm 3000  //in micro meter (= 3mm = 0.3cm)
 
-#define DEL_POS_THRESHOLD 3000	// in micro meter (= 3mm = 0.3cm)
+#define DEL_POS_THRESHOLD 30	// in micro meter (= 0.03mm = 0.003cm)
+#define STATE_THRESHOLD 500
 #define DEL_ROT_THRESHOLD 2.5 	// in degrees
-#define ROS_PUBLISH_RATE 100 	// in Hz
+#define ROS_PUBLISH_RATE 1000 	// in Hz
 
 using namespace raven_2;
 using namespace std;
@@ -58,8 +58,9 @@ class Raven_PathPlanner
 		int Direction;
 		int ArmType;
 		void checkPathState();
-		void AutoCircleMotion1();	// algorithm 1 
+		void AutoCircleMotion1();	// algorithm 1 : kind of unstable
 		void AutoCircleMotion2();	// algorithm 2 : better!
+		void AutoCircleMotion3();	// algorithm 3 : even better! (in use!!)
 
 	public:
 		Raven_PathPlanner();
@@ -70,6 +71,8 @@ class Raven_PathPlanner
 		bool set_Center(boost::array<int, 6>);
 		bool set_Current_Pos(boost::array<int, 6>);
 		bool set_Current_Ori(boost::array<float, 18>);
+		tfScalar get_Radius();
+		tfScalar get_Speed();
 		void show_PathState();
 		void show_Center();
 		void show_delPos();
