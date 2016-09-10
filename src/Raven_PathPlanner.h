@@ -21,7 +21,7 @@
 #define LEFT_ARM 0
 #define RIGHT_ARM 1
 
-#define MAX_RADIUS 3  // 3 different radius levels
+#define MAX_RADIUS 10  // 10 different radius levels
 #define MAX_SPEED 10   // 10 different speed levels
 #define MIN_RADIUS 1
 #define MIN_SPEED 1
@@ -46,6 +46,7 @@ class Raven_PathPlanner
 {
 	private:
 		tf::Vector3 Center;		// the center of the circle
+						// [NOTE]: good center (-85126,-22305,43358)
 		tf::Vector3 Current_Pos;	// current raven position
 		tf::Vector3 Delta_Pos;
 		tf::Quaternion Current_Ori;	// current raven rotation
@@ -61,6 +62,7 @@ class Raven_PathPlanner
 		void AutoCircleMotion1();	// algorithm 1 : kind of unstable
 		void AutoCircleMotion2();	// algorithm 2 : better!
 		void AutoCircleMotion3();	// algorithm 3 : even better! (in use!!)
+		void AutoCircleMotion4();	// algorithm 4 : the best so far! (in use!!)
 
 	public:
 		Raven_PathPlanner();
