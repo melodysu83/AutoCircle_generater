@@ -483,8 +483,7 @@ tf::Transform Raven_PathPlanner::ComputeCircleTrajectory()
 			break;
 
 		case AROUND_CIRCLE:  // in orbit case
-			//AutoCircleMotion2();
-			AutoCircleMotion3();
+			AutoCircleMotion4();
 			break;
 
 		default:
@@ -534,7 +533,7 @@ tf::Transform Raven_PathPlanner::ComputeNullTrajectory()
 	tf::Quaternion q_temp(QX,QY,QZ,W);
 
 	TF_INCR.setOrigin(Delta_Pos);   //add position increment
-	TF_INCR.setRotation(q_temp); 		  //add rotation increment
+	TF_INCR.setRotation(q_temp);    //add rotation increment
 
 	return TF_INCR;
 }
@@ -660,7 +659,7 @@ void Raven_PathPlanner::AutoCircleMotion1()
 */
 void Raven_PathPlanner::AutoCircleMotion2()
 {
-	tfScalar angle, del_angle;
+	tfScalar    del_angle;
 	tf::Vector3 now_Vector;
 	tf::Vector3 nxt_Vector;
 	tf::Vector3 del_Vector;
@@ -740,26 +739,26 @@ void Raven_PathPlanner::AutoCircleMotion3()
 		{
 			if(abs(Y)>=abs(Z)) // octant 4
 			{
-				del_Vector1.setValue(0,     0,-Speed);
-				del_Vector2.setValue(0,-Speed,-Speed);
+				del_Vector1.setValue(0,             0,        -Speed);
+				del_Vector2.setValue(0,-Speed/sqrt(2),-Speed/sqrt(2));
 			}
 			else // octant 3
 			{
-				del_Vector2.setValue(0,-Speed,     0);
-				del_Vector1.setValue(0,-Speed,-Speed);
+				del_Vector2.setValue(0,        -Speed,             0);
+				del_Vector1.setValue(0,-Speed/sqrt(2),-Speed/sqrt(2));
 			}
 		}
 		else if(Z<0)
 		{
 			if(abs(Y)>=abs(Z)) // octant 5
 			{
-				del_Vector2.setValue(0,    0,-Speed);
-				del_Vector1.setValue(0,Speed,-Speed);
+				del_Vector2.setValue(0,            0,        -Speed);
+				del_Vector1.setValue(0,Speed/sqrt(2),-Speed/sqrt(2));
 			}
 			else // octant 6
 			{
-				del_Vector1.setValue(0,Speed,    0);
-				del_Vector2.setValue(0,Speed,-Speed);
+				del_Vector1.setValue(0,        Speed,             0);
+				del_Vector2.setValue(0,Speed/sqrt(2),-Speed/sqrt(2));
 			}
 		}
 		else // Z=0
@@ -802,5 +801,40 @@ void Raven_PathPlanner::AutoCircleMotion3()
 			Delta_Pos.setValue(0,del_Vector1.getY(),del_Vector1.getZ());
 	}
 
+}
+
+
+
+/**
+*	\fn void AutoCircleMotion4()
+*
+* 	\brief this is the fourth algorithm for circle trajectory generation
+*
+* 	\param void
+*
+*	\return void
+*/
+void Raven_PathPlanner::AutoCircleMotion4()
+{
+	tfScalar    del_angle;
+	tf::Vector3 now_Vector;
+	tf::Vector3 nxt_Vector;
+	tf::Vector3 del_Vector;
+	tf::Vector3 X_AXIS(1,0,0);
+
+	now_Vector = Current_Pos - Center;
+	now_Vector.setX(0);
+	now_Vector = now_Vector.normalized()*Radius;
+
+	del_angle = min( asin(Speed/Radius) , M_PI/6 );
+
+	nxt_Vector = now_Vector.rotate(X_AXIS,del_angle*Direction);
+
+	del_Vector = nxt_Vector - now_Vector;
+
+	if(del_Vector.length() > Speed)	
+		del_Vector = del_Vector.normalized()*Speed;
+
+	Delta_Pos.setValue(0,del_Vector.getY(),del_Vector.getZ());
 }
 
