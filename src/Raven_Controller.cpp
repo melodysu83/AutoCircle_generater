@@ -148,6 +148,7 @@ void Raven_Controller::init_words()
 		cout<<"                  SPEED = "<<SPEED<<endl;
 		cout<<"                  DIRECTION = "<<DIRECTION<<endl<<endl;
 		cout<<"Please press \"Enter\" to start!";
+		cin.clear();
 		getline(std::cin,start);
 	}while(start!="");
 
@@ -425,7 +426,7 @@ void* Raven_Controller::ros_process(void)
 			{
 				// normal moving case
 				TF_INCR[LEFT_ARM] = LEFT_PATH.ComputeCircleTrajectory();
-				TF_INCR[RIGHT_ARM] = RIGHT_PATH.ComputeCircleTrajectory();
+				TF_INCR[RIGHT_ARM] = RIGHT_PATH.ComputeNullTrajectory();
 
 			}
 
@@ -472,6 +473,7 @@ void Raven_Controller::publish_raven_automove()
 
 	// (1) wrap up the new command	
 	msg_raven_automove.hdr.stamp = msg_raven_automove.hdr.stamp.now(); //hdr
+
 
 	tf::transformTFToMsg(TF_INCR[LEFT_ARM], msg_raven_automove.tf_incr[LEFT_ARM]);   //tf_incr
 	tf::transformTFToMsg(TF_INCR[RIGHT_ARM], msg_raven_automove.tf_incr[RIGHT_ARM]);
@@ -623,6 +625,8 @@ void Raven_Controller::output_PATHinfo()
 	LEFT_PATH.show_PathState();
 	//RIGHT_PATH.show_PathState(); 	//(RIGHT_ARM unused right now)
 	
+	LEFT_PATH.show_Distance();
+	//RIGHT_PATH.show_Distance(); 	//(RIGHT_ARM unused right now)
 	cout<<endl<<endl;
 		
 }
