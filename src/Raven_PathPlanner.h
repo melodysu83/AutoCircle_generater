@@ -22,16 +22,17 @@
 #define RIGHT_ARM 1
 
 #define MAX_RADIUS 10  // 10 different radius levels
-#define MAX_SPEED 10   // 10 different speed levels
+#define MAX_SPEED 60   // 60 different speed levels
 #define MIN_RADIUS 1
 #define MIN_SPEED 1
 
 #define RADIUS_level_TO_microm 3000  //in micro meter (= 3mm = 0.3cm)
 
-#define DEL_POS_THRESHOLD 30	// in micro meter (= 0.03mm = 0.003cm)
-#define STATE_THRESHOLD 500
+#define DEL_POS_THRESHOLD 180	// in micro meter (= 0.18mm = 0.018cm)
+#define STATE_THRESHOLD 300
 #define DEL_ROT_THRESHOLD 2.5 	// in degrees
 #define ROS_PUBLISH_RATE 1000 	// in Hz
+
 
 using namespace raven_2;
 using namespace std;
@@ -54,15 +55,24 @@ class Raven_PathPlanner
 		tfScalar Radius;		// in mm
 		tfScalar Speed;
 		tfScalar Distance;		// the distance between current pos and center
+		tfScalar Error;			// the difference between radius and distance
 		PATH_STATE PathState;
 	
+		pthread_mutexattr_t data1MutexAttr;
+		pthread_mutex_t data1Mutex;
+
 		int Direction;
 		int ArmType;
+		bool FIRST_SEND;
+		tfScalar last_y,last_z;
+		tfScalar Kp;
+		tfScalar sign(tfScalar);
 		void checkPathState();
-		void AutoCircleMotion1();	// algorithm 1 : kind of unstable
-		void AutoCircleMotion2();	// algorithm 2 : better!
-		void AutoCircleMotion3();	// algorithm 3 : even better! (in use!!)
-		void AutoCircleMotion4();	// algorithm 4 : the best so far! (in use!!)
+		void AutoCircleMotion1();		// algorithm 1 : kind of unstable
+		void AutoCircleMotion2();		// algorithm 2 : better!
+		void AutoCircleMotion3();		// algorithm 3 : even better! 
+		tf::Vector3 AutoCircleMotion4();	// algorithm 4 : the best so far! (in use!!)	
+		tf::Vector3 TuneRadiusMotion();
 
 	public:
 		Raven_PathPlanner();
@@ -76,6 +86,7 @@ class Raven_PathPlanner
 		tfScalar get_Radius();
 		tfScalar get_Speed();
 		void show_PathState();
+		void show_Distance();
 		void show_Center();
 		void show_delPos();
 
