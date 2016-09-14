@@ -11,6 +11,9 @@
 */
 Raven_PathPlanner::Raven_PathPlanner()
 {
+	pthread_mutexattr_init(&data1MutexAttr);
+	pthread_mutexattr_setprotocol(&data1MutexAttr,PTHREAD_PRIO_INHERIT);
+	pthread_mutex_init(&data1Mutex,&data1MutexAttr);
 
 }
 
@@ -32,6 +35,7 @@ bool Raven_PathPlanner::set_Radius(int radius)
 		return false;
 	}
 	Radius = radius * RADIUS_level_TO_microm; // in micro meter
+
 	return true;
 }
 
@@ -54,6 +58,10 @@ bool Raven_PathPlanner::set_Speed(int speed)
 		return false;
 	}
 	Speed = speed * DEL_POS_THRESHOLD / MAX_SPEED; // in micro meter
+
+	// set proportional gain Kp (Depends on Speed value.)
+	Kp = 0.000001*Speed;
+	
 	return true;
 }
 
@@ -82,7 +90,7 @@ bool Raven_PathPlanner::set_Direction(int direc)
 
 
 /**
-*	\fn bool set_Center(boost::array<int, 6> center)
+*	\fn bool set_ArmType(int armtype)
 *
 * 	\brief stores RAVEN arm type
 *
@@ -271,6 +279,25 @@ bool Raven_PathPlanner::set_Current_Ori(boost::array<float, 18> rot_matix)
 
 
 /**
+*	\fn tfScalar sign(tfScalar value)
+*
+* 	\brief this function returens the sign of the value
+*
+* 	\param tfScalar
+*
+*	\return tfScalar
+*/
+tfScalar Raven_PathPlanner::sign(tfScalar value)
+{
+	if(value >= 0)
+		return 1;
+	else 
+		return -1;
+}
+
+
+
+/**
 *	\fn void checkPathState()
 *
 * 	\brief this function checks whether RAVEN is in AROUND_CIRCLE or MOVETO_CIRCLE state
@@ -284,9 +311,11 @@ bool Raven_PathPlanner::set_Current_Ori(boost::array<float, 18> rot_matix)
 void Raven_PathPlanner::checkPathState()
 {
 	PathState = AROUND_CIRCLE;
+	
+	Error = abs(Radius-Distance);
 
-	if(Distance == 0 || Distance > Radius+STATE_THRESHOLD || Distance < abs(Radius-STATE_THRESHOLD))
-		PathState = MOVETO_CIRCLE;
+	if(Distance == 0 || Error > STATE_THRESHOLD)
+		PathState = MOVETO_CIRCLE;	
 }
 
 
@@ -357,6 +386,29 @@ void Raven_PathPlanner::show_PathState()
 	
 }
 
+
+
+/**
+*	\fn void show_Distance()
+*
+* 	\brief displays current distance to center position
+*
+* 	\param void
+*
+*	\return void
+*/
+void Raven_PathPlanner::show_Distance()
+{
+	if(ArmType == LEFT_ARM)
+	{
+		cout<<"\tDistance to Center[LEFT]  = "<<Distance/10000<<" cm "<<endl;
+	}
+	else if(ArmType == RIGHT_ARM)
+	{
+		cout<<"\tDistance to Center[RIGHT]  = "<<Distance/10000<<" cm "<<endl;
+	}
+	
+}
 
 
 /**
@@ -450,40 +502,32 @@ tf::Transform Raven_PathPlanner::ComputeCircleTrajectory()
 {
 	tf::Transform TF_INCR;
 
+	pthread_mutex_lock(&data1Mutex);
 	// (1) set position increment (only Y-Z plane)
 	switch(PathState)
 	{
 		case MOVETO_CIRCLE: // finding orbit case
 
-			Delta_Pos = Current_Pos - Center;
-			Delta_Pos.setX(0);  //only care about the YZ plane
-
-			if(Distance == 0) // at center
+			if(Distance == 0) // exactly at center
 			{
-				Delta_Pos.setValue(0,Speed,0);
+				Delta_Pos.setValue(0,Speed,0); 	
 			}
-			else if(Distance > Radius + STATE_THRESHOLD) // out of circle : need to move back in
+			else // either inside of outside circle
 			{
-				Delta_Pos.normalize();
+				tf::Vector3 Delta_Pos1 = TuneRadiusMotion();  // normal direction
+				tf::Vector3 Delta_Pos2 = AutoCircleMotion4(); // tangent direction
 
-				if(Distance - Radius < Speed)
-					Delta_Pos = - (Distance - Radius) * Delta_Pos;
-				else
-					Delta_Pos = - Speed * Delta_Pos;
-			}
-			else if(Distance < abs(Radius-STATE_THRESHOLD)) // inside circle : need to move outward
-			{
-				Delta_Pos.normalize();
+				tfScalar K = Kp * Error;
 
-				if(Radius - Distance < Speed)
-					Delta_Pos = (Radius - Distance) * Delta_Pos;
-				else
-					Delta_Pos = Speed * Delta_Pos;
+				K = (K>1) ? 1 : K; // K should not be larger than 1
+
+				Delta_Pos = (K)*Delta_Pos1 + (1-K)*Delta_Pos2;
 			}
 			break;
 
 		case AROUND_CIRCLE:  // in orbit case
-			AutoCircleMotion4();
+
+			Delta_Pos = AutoCircleMotion4();
 			break;
 
 		default:
@@ -502,6 +546,7 @@ tf::Transform Raven_PathPlanner::ComputeCircleTrajectory()
 	// (3) add increment to return variable
 	TF_INCR.setOrigin(Delta_Pos);   
 	TF_INCR.setRotation(Delta_Ori); 
+	pthread_mutex_unlock(&data1Mutex);
 
 	return TF_INCR;
 }
@@ -806,27 +851,25 @@ void Raven_PathPlanner::AutoCircleMotion3()
 
 
 /**
-*	\fn void AutoCircleMotion4()
+*	\fn tf::Vector3 AutoCircleMotion4()
 *
 * 	\brief this is the fourth algorithm for circle trajectory generation
 *
 * 	\param void
 *
-*	\return void
+*	\return tf::Vector3 
 */
-void Raven_PathPlanner::AutoCircleMotion4()
+tf::Vector3 Raven_PathPlanner::AutoCircleMotion4()
 {
-	tfScalar    del_angle;
-	tf::Vector3 now_Vector;
-	tf::Vector3 nxt_Vector;
-	tf::Vector3 del_Vector;
+	tfScalar del_angle;
+	tf::Vector3 now_Vector,nxt_Vector,del_Vector;
 	tf::Vector3 X_AXIS(1,0,0);
 
 	now_Vector = Current_Pos - Center;
 	now_Vector.setX(0);
 	now_Vector = now_Vector.normalized()*Radius;
 
-	del_angle = min( asin(Speed/Radius) , M_PI/6 );
+	del_angle = min(2*asin(Speed/(2*Radius)) , M_PI/8 );
 
 	nxt_Vector = now_Vector.rotate(X_AXIS,del_angle*Direction);
 
@@ -834,7 +877,54 @@ void Raven_PathPlanner::AutoCircleMotion4()
 
 	if(del_Vector.length() > Speed)	
 		del_Vector = del_Vector.normalized()*Speed;
+	del_Vector.setX(0);
 
-	Delta_Pos.setValue(0,del_Vector.getY(),del_Vector.getZ());
+	return  del_Vector;
 }
+
+
+
+/**
+*	\fn tf::Vector3 TuneRadiusMotion()
+*
+* 	\brief this is the algorithm to help robot navigate to the correct radius value
+*
+* 	\param void
+*
+*	\return tf::Vector3 
+*/
+tf::Vector3 Raven_PathPlanner::TuneRadiusMotion()
+{
+	tf::Vector3 now_Vector,del_Vector;
+
+	now_Vector = Current_Pos - Center;
+	now_Vector.setX(0);
+
+	if(Distance > Radius + STATE_THRESHOLD) // out of circle : need to move back in
+	{
+		del_Vector = now_Vector.normalized();
+
+		if(Distance - Radius < Speed)
+			del_Vector = - (Distance - Radius) * del_Vector;
+		else
+			del_Vector = - Speed * del_Vector;
+		
+	}
+	else if(Distance < abs(Radius-STATE_THRESHOLD)) // inside circle : need to move outward
+	{
+		del_Vector = now_Vector.normalized();
+
+		if(Radius - Distance < Speed)
+			del_Vector = (Radius - Distance) * del_Vector;
+		else
+			del_Vector = Speed * del_Vector;
+	}
+
+	return del_Vector;
+}
+
+
+
+
+
 
