@@ -69,13 +69,13 @@ These are the constraints we set for our physical device - RAVEN surgical robot 
 
 2. **feedback rate** : The raven_state.msg is being sent at 100 Hz in listener.cpp. But in actual RAVEN software, raven_state.msg is updated at 1000 Hz.
 
-3. **DEL_POS_THRESHOLD** : This is the motion translation threshold for RAVEN to move. It is set as 3000 micro meter (=3 mm = 0.3 cm). That being said, the maximum speed that RAVEN will be moving is 100 Hz * 0.3 cm = 30 (cm/sec).
+3. **DEL_POS_THRESHOLD** : This is the motion translation threshold for RAVEN to move. It is set as 180 micro meter (=0.18 mm = 0.018 cm). That being said, the maximum speed that RAVEN will be moving is 100 Hz * 0.18 cm = 18 (cm/sec).
 
 4. **DEL_ROT_THRESHOLD** : This is the motion rotation threshold for RAVEN to move. It is set to be 2.5 degrees. That being said, the maximum rotational speed for RAVEN will be is 100 Hz * 2.5 degrees cm = 250 (degrees/sec). This is currently unused because the circle trajectoy we have now does NOT include orientation motion.
 
 5. **RADIUS levels** : There are ten levels of RADIUS to choose from. Level 1 ~ 10 corresponds to 10000 micro meter (=10 mm = 1cm) ~ 100000 micro meter (=100 mm = 10cm).
 
-6. **SPEED levels** : There are ten levels of SPEED to choose from. Level 1 ~ 10 corresponds to moving 0.3mm/per command ~ 3mm/per command (which is exactly DEL_POS_THRESHOLD).
+6. **SPEED levels** : There are ten levels of SPEED to choose from. Level 1 ~ 60 corresponds to moving 0.3 mm/per command ~ 18 mm/per command (which is exactly DEL_POS_THRESHOLD).
 
 
 ## Relative links:
