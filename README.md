@@ -65,17 +65,25 @@ And since we are NOT actually connected to the main RAVEN software yet, we have 
 ## Spec : 
 These are the constraints we set for our physical device - RAVEN surgical robot arm to function normally. These are mostly defined in [PathPlanner.h](https://github.com/melodysu83/AutoCircle_generater/blob/master/src/Raven_PathPlanner.h) file under /src folder. Be careful when tuning these values!
 
-1. **publish rate** : The raven_automove.msg is being sent at 100 Hz.
+1. **publish rate** : The raven_automove.msg is being sent at 1000 Hz.
 
 2. **feedback rate** : The raven_state.msg is being sent at 100 Hz in listener.cpp. But in actual RAVEN software, raven_state.msg is updated at 1000 Hz.
 
-3. **DEL_POS_THRESHOLD** : This is the motion translation threshold for RAVEN to move. It is set as 180 micro meter (=0.18 mm = 0.018 cm). That being said, the maximum speed that RAVEN will be moving is 100 Hz * 0.18 cm = 18 (cm/sec).
+3. **DEL_POS_THRESHOLD** : This is the motion translation threshold for RAVEN to move. It is set as 180 micro meter (=0.18 mm = 0.018 cm). That being said, the maximum speed that RAVEN will be moving is 1000 Hz * 0.018 cm = 18 (cm/sec).
 
-4. **DEL_ROT_THRESHOLD** : This is the motion rotation threshold for RAVEN to move. It is set to be 2.5 degrees. That being said, the maximum rotational speed for RAVEN will be is 100 Hz * 2.5 degrees cm = 250 (degrees/sec). This is currently unused because the circle trajectoy we have now does NOT include orientation motion.
+4. **DEL_ROT_THRESHOLD** : This is the motion rotation threshold for RAVEN to move. It is set to be 0.25 degrees. That being said, the maximum rotational speed for RAVEN will be is 1000 Hz * 0.25 degrees = 250 (degrees/sec). This is currently unused because the circle trajectoy we have now does NOT include orientation motion.
 
-5. **RADIUS levels** : There are ten levels of RADIUS to choose from. Level 1 ~ 10 corresponds to 10000 micro meter (=10 mm = 1cm) ~ 100000 micro meter (=100 mm = 10cm).
+5. **RADIUS levels** : There are ten levels of RADIUS to choose from. Level 1 ~ 6 corresponds to 3000 micro meter (=3 mm = 0.3cm) ~ 100000 micro meter (=18 mm = 1.8cm). Yet that is the desired radius. From our experiments, the relation between desired radius and actual radius are listed as follows:
+	           radius level      desired radius      actual radius        max speed level allowed
+	     ---------------------------------------------------------------------------------------------------
+	               1                0.3 cm           1.2 ~ 1.3 cm                   50
+	               2                0.6 cm           1.4 ~ 1.5 cm                   50
+	               3                0.9 cm           1.6 ~ 1.7 cm                   60
+	               4                1.2 cm           1.8 ~ 1.9 cm                   60
+	               5                1.5 cm           2.0 ~ 2.1 cm                   60
+	               6                1.8 cm           2.2 ~ 2.4 cm                   60
 
-6. **SPEED levels** : There are ten levels of SPEED to choose from. Level 1 ~ 60 corresponds to moving 0.3 mm/per command ~ 18 mm/per command (which is exactly DEL_POS_THRESHOLD).
+6. **SPEED levels** : There are sixty levels of SPEED to choose from, with each level increasing 0.3 cm/sec from the previous level. So level 1 ~ 60 corresponds to moving 0.3 cm/sec (= 3mm/sec = 0.003 mm per command) all the way up to 18 cm/sec (= 180mm/sec = 0.18 mm per command, which is exactly DEL_POS_THRESHOLD).
 
 
 ## Relative links:
