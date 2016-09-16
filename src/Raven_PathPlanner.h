@@ -21,18 +21,25 @@
 #define LEFT_ARM 0
 #define RIGHT_ARM 1
 
-#define MAX_RADIUS 10  // 10 different radius levels
+#define MAX_RADIUS 6   // 6 different radius levels
 #define MAX_SPEED 60   // 60 different speed levels
 #define MIN_RADIUS 1
 #define MIN_SPEED 1
+#define SMALL_RADIUS 2
+#define SMALL_RADIUS_MAX_SPEED 50
 
 #define RADIUS_level_TO_microm 3000  //in micro meter (= 3mm = 0.3cm)
 
 #define DEL_POS_THRESHOLD 180	// in micro meter (= 0.18mm = 0.018cm)
 #define STATE_THRESHOLD 300
-#define DEL_ROT_THRESHOLD 2.5 	// in degrees
+#define DEL_ROT_THRESHOLD 0.25 	// in degrees
 #define ROS_PUBLISH_RATE 1000 	// in Hz
 
+
+// [DANGER]: for modification parameter tuning only
+#define DEFAULT_MODIFICATION_SCALE  	  	0.000001
+#define DEFAULT_MODIFICATION_SPEED_POWER  	0.7
+#define DEFAULT_MODIFICATION_DISTANCE_POWER  	1
 
 using namespace raven_2;
 using namespace std;
@@ -46,6 +53,10 @@ enum PATH_STATE{
 class Raven_PathPlanner
 {
 	private:
+		tfScalar Modi_Scale;
+		tfScalar Modi_Speed_Pow;
+		tfScalar Modi_Dista_Pow;
+
 		tf::Vector3 Center;		// the center of the circle
 						// [NOTE]: good center (-85126,-22305,43358)
 		tf::Vector3 Current_Pos;	// current raven position
@@ -65,6 +76,7 @@ class Raven_PathPlanner
 		int ArmType;
 		bool FIRST_SEND;
 		tfScalar last_y,last_z;
+		tfScalar K;
 		tfScalar Kp;
 		tfScalar sign(tfScalar);
 		void checkPathState();
@@ -84,11 +96,22 @@ class Raven_PathPlanner
 		bool set_Current_Pos(boost::array<int, 6>);
 		bool set_Current_Ori(boost::array<float, 18>);
 		tfScalar get_Radius();
+		tfScalar get_Radius_Range();
 		tfScalar get_Speed();
+		tfScalar get_K();
 		void show_PathState();
 		void show_Distance();
 		void show_Center();
 		void show_delPos();
+/*
+		// [DANGER]: for modification parameter tuning only
+		bool set_Modi_Scale(int);
+		bool set_Modi_Speed_Pow(int);
+		bool set_Modi_Dista_Pow(int);
+		tfScalar get_Modi_Scale();
+		tfScalar get_Modi_Speed_Pow();
+		tfScalar get_Modi_Dista_Pow();
+*/
 
 		tfScalar DistanceOf(tf::Vector3,tf::Vector3);
 		tf::Transform ComputeCircleTrajectory();
