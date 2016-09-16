@@ -74,14 +74,14 @@ These are the constraints we set for our physical device - RAVEN surgical robot 
 4. **DEL_ROT_THRESHOLD** : This is the motion rotation threshold for RAVEN to move. It is set to be 0.25 degrees. That being said, the maximum rotational speed for RAVEN will be is 1000 Hz * 0.25 degrees = 250 (degrees/sec). This is currently unused because the circle trajectoy we have now does NOT include orientation motion.
 
 5. **RADIUS levels** : There are ten levels of RADIUS to choose from. Level 1 ~ 6 corresponds to 3000 micro meter (=3 mm = 0.3cm) ~ 100000 micro meter (=18 mm = 1.8cm). Yet that is the desired radius. From our experiments, the relation between desired radius and actual radius are listed as follows:
-radius level  | desired radius | actual radius | max speed level allowed
------------- | ------------- | ------------- | -------------
-1 | 0.3cm | 1.2 ~ 1.3 cm | 50
-2 | 0.6cm | 1.4 ~ 1.5 cm | 50
-3 | 0.9cm | 1.6 ~ 1.7 cm | 60
-4 | 1.2cm | 1.8 ~ 1.9 cm | 60
-5 | 1.5cm | 2.0 ~ 2.1 cm | 60
-6 | 1.8cm | 2.2 ~ 2.4 cm | 60
+| radius level  | desired radius | actual radius | max speed level allowed |
+|-------------- |:--------------:|:-------------:|------------------------:|
+|       1       |      0.3cm     |  1.2 ~ 1.3 cm |           50            |
+|       2       |      0.6cm     |  1.4 ~ 1.5 cm |           50            |
+|       3       |      0.9cm     |  1.6 ~ 1.7 cm |           60            |
+|       4       |      1.2cm     |  1.8 ~ 1.9 cm |           60            |
+|       5       |      1.5cm     |  2.0 ~ 2.1 cm |           60            |
+|       6       |      1.8cm     |  2.2 ~ 2.4 cm |           60            |
 
 6. **SPEED levels** : There are sixty levels of SPEED to choose from, with each level increasing 0.3 cm/sec from the previous level. So level 1 ~ 60 corresponds to moving 0.3 cm/sec (= 3mm/sec = 0.003 mm per command) all the way up to 18 cm/sec (= 180mm/sec = 0.18 mm per command, which is exactly DEL_POS_THRESHOLD).
 
