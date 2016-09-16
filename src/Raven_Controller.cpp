@@ -294,6 +294,12 @@ void* Raven_Controller::console_process(void)
 				case '3':
 				{
 					SPEED = (SPEED+1 > MAX_SPEED) ? MAX_SPEED : SPEED+1;
+
+					// [DANGER]: related to modification parameter tuning
+					// observation from experiments
+					if(RADIUS < SMALL_RADIUS)	
+						SPEED = (SPEED > SMALL_RADIUS_MAX_SPEED) ? SMALL_RADIUS_MAX_SPEED : SPEED;
+
 					LEFT_PATH.set_Speed(SPEED);
 					RIGHT_PATH.set_Speed(SPEED);
 
@@ -365,6 +371,45 @@ void* Raven_Controller::console_process(void)
 					print_menu = true;
 					break;
 				}
+				/*
+				// [DANGER]: for modification parameter tuning only
+				case 'a':
+				{	cout<<"You chose a : increase Modi_Scale."<<endl;
+					LEFT_PATH.set_Modi_Scale(1);
+					print_menu = true;
+					break;
+				}
+				case 'z':
+				{	cout<<"You chose z : decrease Modi_Scale."<<endl;
+					LEFT_PATH.set_Modi_Scale(-1);
+					print_menu = true;
+					break;
+				}
+				case 's':
+				{	cout<<"You chose s : increase Modi_Speed_Pow."<<endl;
+					LEFT_PATH.set_Modi_Speed_Pow(1);
+					print_menu = true;
+					break;
+				}
+				case 'x':
+				{	cout<<"You chose x : decrease Modi_Speed_Pow."<<endl;
+					LEFT_PATH.set_Modi_Speed_Pow(-1);
+					print_menu = true;
+					break;
+				}
+				case 'd':
+				{	cout<<"You chose d : increase Modi_Dista_Pow."<<endl;
+					LEFT_PATH.set_Modi_Dista_Pow(1);
+					print_menu = true;
+					break;
+				}
+				case 'c':
+				{	cout<<"You chose c : decrease Modi_Dista_Pow."<<endl;
+					LEFT_PATH.set_Modi_Dista_Pow(-1);
+					print_menu = true;
+					break;
+				}
+				*/
 	
 			}
 
@@ -589,16 +634,27 @@ void autoRavenStateCallback(boost::shared_ptr< ::raven_state_<ContainerAllocator
 void Raven_Controller::output_STATUS()
 {
 	tfScalar R = LEFT_PATH.get_Radius(); 		// in cm
-	tfScalar SP = LEFT_PATH.get_Speed(); 	// in cm/sec
+	tfScalar dR = LEFT_PATH.get_Radius_Range();	// in cm
+	tfScalar SP = LEFT_PATH.get_Speed(); 		// in cm/sec
+	tfScalar k = LEFT_PATH.get_K();
 
         cout<<"current AutoCircle status :"<<endl;
-	cout<<"\tRADIUS = "<<R<<" cm \t(level "<<RADIUS<<")"<<endl;
-	cout<<"\tSPEED  = "<<SP<<" cm/sec\t(level "<<SPEED<<")"<<endl<<endl;
+	cout<<"\tRADIUS = "<<R<<"~"<<(R+dR)<<" cm \t(level "<<RADIUS<<")"<<endl;
+	cout<<"\tSPEED  = "<<SP<<" cm/sec\t(level "<<SPEED<<")"<<endl;
+	cout<<"\tK      = "<<k<<" (the regulating term: 0~1)"<<endl<<endl;
 	
+	/*
+	// [DANGER]: for modification parameter tuning only
+	tfScalar modi_scale = LEFT_PATH.get_Modi_Scale();
+	tfScalar modi_speed_pow = LEFT_PATH.get_Modi_Speed_Pow();
+	tfScalar modi_dista_pow = LEFT_PATH.get_Modi_Dista_Pow();
+	
+	cout<<"\tscale="<<modi_scale<<" speedPow="<<modi_speed_pow<<" disPow="<<modi_dista_pow<<endl;
+	*/
+
 	output_PATHinfo();
 	output_PUBinfo();
 	output_SUBinfo();
-	
 }
 
 
