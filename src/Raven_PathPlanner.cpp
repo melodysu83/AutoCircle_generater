@@ -11,6 +11,10 @@
 */
 Raven_PathPlanner::Raven_PathPlanner()
 {
+	Modi_Scale =     DEFAULT_MODIFICATION_SCALE;
+	Modi_Speed_Pow = DEFAULT_MODIFICATION_SPEED_POWER;
+	Modi_Dista_Pow = DEFAULT_MODIFICATION_DISTANCE_POWER;
+
 	pthread_mutexattr_init(&data1MutexAttr);
 	pthread_mutexattr_setprotocol(&data1MutexAttr,PTHREAD_PRIO_INHERIT);
 	pthread_mutex_init(&data1Mutex,&data1MutexAttr);
@@ -59,8 +63,9 @@ bool Raven_PathPlanner::set_Speed(int speed)
 	}
 	Speed = speed * DEL_POS_THRESHOLD / MAX_SPEED; // in micro meter
 
+	//..
 	// set proportional gain Kp (Depends on Speed value.)
-	Kp = 0.000001*Speed;
+	Kp = Modi_Scale * tfPow(Speed,Modi_Speed_Pow);
 	
 	return true;
 }
@@ -332,7 +337,47 @@ void Raven_PathPlanner::checkPathState()
 tfScalar Raven_PathPlanner::get_Radius()
 {
 	tfScalar R = Radius/10000; // in cm
+	R = 2*R/3 + 1;
+/*
+	// [DANGER]: related to modification parameter tuning
+		     observation from experiments
+		     relation from desired radius to actual radius!
+		     here is the relation:
+		     
+	           radius level      desired radius     actual radius       
+	     --------------------------------------------------------------
+	               1                0.3 cm           1.2 ~ 1.3 cm
+	               2                0.6 cm           1.4 ~ 1.5 cm
+	               3                0.9 cm           1.6 ~ 1.7 cm
+	               4                1.2 cm           1.8 ~ 1.9 cm
+	               5                1.5 cm           2.0 ~ 2.1 cm
+	               6                1.8 cm           2.2 ~ 2.4 cm
+*/
 	return R;
+}
+
+
+
+/**
+*	\fn tfScalar get_Radius_Range()
+*
+* 	\brief returns the current radius range
+*
+* 	\param void
+*
+*	\return tfScalar
+*/
+tfScalar Raven_PathPlanner::get_Radius_Range()
+{
+	// [DANGER]: related to modification parameter tuning
+	tfScalar result = 0.1;     // in cm
+	tfScalar R = Radius/10000; // in cm
+
+	if(R == 1.8)
+	result = 0.2;  // observation from experiments
+		       // how much does actual radius swings!
+	
+	return result;
 }
 
 
@@ -340,7 +385,7 @@ tfScalar Raven_PathPlanner::get_Radius()
 /**
 *	\fn tfScalar get_Speed()
 *
-* 	\brief stores the current position received from raven_state
+* 	\brief returns the current Speed (in cm/sec)
 *
 * 	\param void
 *
@@ -351,6 +396,25 @@ tfScalar Raven_PathPlanner::get_Speed()
 	tfScalar SP = Speed*ROS_PUBLISH_RATE/10000; // in cm/sec
 	return SP;
 }
+
+
+
+/**
+*	\fn tfScalar get_K()
+*
+* 	\brief stores the current position received from raven_state
+*
+* 	\param void
+*
+*	\return tfScalar
+*/
+tfScalar Raven_PathPlanner::get_K()
+{
+	tfScalar result = K;
+	return result;
+}
+
+
 
 /**
 *	\fn void show_PathState()
@@ -516,12 +580,15 @@ tf::Transform Raven_PathPlanner::ComputeCircleTrajectory()
 			{
 				tf::Vector3 Delta_Pos1 = TuneRadiusMotion();  // normal direction
 				tf::Vector3 Delta_Pos2 = AutoCircleMotion4(); // tangent direction
-
-				tfScalar K = Kp * Error;
+				
+				//..
+				K = Kp * tfPow(Error,Modi_Dista_Pow);
 
 				K = (K>1) ? 1 : K; // K should not be larger than 1
 
 				Delta_Pos = (K)*Delta_Pos1 + (1-K)*Delta_Pos2;
+
+				Delta_Pos = Delta_Pos.normalized()*Speed;  //..
 			}
 			break;
 
@@ -923,8 +990,47 @@ tf::Vector3 Raven_PathPlanner::TuneRadiusMotion()
 	return del_Vector;
 }
 
+/*
+// [DANGER]: for modification parameter tuning only
 
+bool Raven_PathPlanner::set_Modi_Scale(int x)
+{
+	tfScalar step = 0.000001;
+	Modi_Scale = Modi_Scale + step*x;
+	return true;
+}
 
+bool Raven_PathPlanner::set_Modi_Speed_Pow(int x)
+{
+	tfScalar step = 0.1;
+	Modi_Speed_Pow = Modi_Speed_Pow + step*x;
+	return true;
+}
 
+bool Raven_PathPlanner::set_Modi_Dista_Pow(int x)
+{
+	tfScalar step = 0.5;
+	Modi_Dista_Pow = Modi_Dista_Pow + step*x;
+	return true;
+}
+
+tfScalar Raven_PathPlanner::get_Modi_Scale()
+{
+	tfScalar result = Modi_Scale;
+	return result;
+}
+
+tfScalar Raven_PathPlanner::get_Modi_Speed_Pow()
+{
+	tfScalar result = Modi_Speed_Pow;
+	return result;
+}
+
+tfScalar Raven_PathPlanner::get_Modi_Dista_Pow()
+{
+	tfScalar result = Modi_Dista_Pow;
+	return result;
+}
+*/
 
 
