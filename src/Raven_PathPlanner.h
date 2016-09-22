@@ -27,6 +27,8 @@
 #define MIN_SPEED 1
 #define SMALL_RADIUS 2
 #define SMALL_RADIUS_MAX_SPEED 50
+#define VERTICLE_CIRCLE_MAX_SPEED 40
+#define CHANGE_BASEPLANE_MAX_SPEED 10
 
 #define RADIUS_level_TO_microm 3000  //in micro meter (= 3mm = 0.3cm)
 
@@ -35,6 +37,9 @@
 #define DEL_ROT_THRESHOLD 0.25 	// in degrees
 #define ROS_PUBLISH_RATE 1000 	// in Hz
 
+#define YZ_PLANE 0    // circluate around X axis
+#define XZ_PLANE 1    // circluate around Y axis
+#define XY_PLANE 2    // circluate around Z axis
 
 // [DANGER]: for modification parameter tuning only
 #define DEFAULT_MODIFICATION_SCALE  	  	0.000001
@@ -50,12 +55,17 @@ enum PATH_STATE{
 	MOVETO_CIRCLE	// move to the new circle (when radius or center change)
 };
 
+
 class Raven_PathPlanner
 {
 	private:
 		tfScalar Modi_Scale;
 		tfScalar Modi_Speed_Pow;
 		tfScalar Modi_Dista_Pow;
+		
+		tf::Vector3 X_AXIS;
+		tf::Vector3 Y_AXIS;
+		tf::Vector3 Z_AXIS;
 
 		tf::Vector3 Center;		// the center of the circle
 						// [NOTE]: good center (-85126,-22305,43358)
@@ -73,6 +83,7 @@ class Raven_PathPlanner
 		pthread_mutex_t data1Mutex;
 
 		int Direction;
+		int Base_Plane;
 		int ArmType;
 		bool FIRST_SEND;
 		tfScalar last_y,last_z;
@@ -91,6 +102,7 @@ class Raven_PathPlanner
 		bool set_Radius(int);
 		bool set_Speed(int);
 		bool set_Direction(int);
+		bool set_BasePlane(int);
 		bool set_ArmType(int);
 		bool set_Center(boost::array<int, 6>);
 		bool set_Current_Pos(boost::array<int, 6>);
