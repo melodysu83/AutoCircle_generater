@@ -15,6 +15,10 @@ Raven_PathPlanner::Raven_PathPlanner()
 	Modi_Speed_Pow = DEFAULT_MODIFICATION_SPEED_POWER;
 	Modi_Dista_Pow = DEFAULT_MODIFICATION_DISTANCE_POWER;
 
+	X_AXIS.setValue(1,0,0);
+	Y_AXIS.setValue(0,1,0);
+	Z_AXIS.setValue(0,0,1);
+
 	pthread_mutexattr_init(&data1MutexAttr);
 	pthread_mutexattr_setprotocol(&data1MutexAttr,PTHREAD_PRIO_INHERIT);
 	pthread_mutex_init(&data1Mutex,&data1MutexAttr);
@@ -90,6 +94,28 @@ bool Raven_PathPlanner::set_Direction(int direc)
 	}
 	Direction = direc;
 	return true;
+}
+
+
+
+/**
+*	\fn bool set_BasePlane(int plane)
+*
+* 	\brief stores the circular trajectory base plane
+*
+* 	\param int
+*
+*	\return bool
+*/
+bool Raven_PathPlanner::set_BasePlane(int plane)
+{
+	if(plane == YZ_PLANE || plane == XZ_PLANE || plane == XY_PLANE )
+	{	
+		Base_Plane = plane;
+		return true;
+	}
+	ROS_ERROR("Invalid Direction value. Setting fail!");
+	return false;
 }
 
 
@@ -465,11 +491,11 @@ void Raven_PathPlanner::show_Distance()
 {
 	if(ArmType == LEFT_ARM)
 	{
-		cout<<"\tDistance to Center[LEFT]  = "<<Distance/10000<<" cm "<<endl;
+		cout<<"\tDistance from Center[LEFT]  = "<<Distance/10000<<" cm "<<endl;
 	}
 	else if(ArmType == RIGHT_ARM)
 	{
-		cout<<"\tDistance to Center[RIGHT]  = "<<Distance/10000<<" cm "<<endl;
+		cout<<"\tDistance from Center[RIGHT]  = "<<Distance/10000<<" cm "<<endl;
 	}
 	
 }
@@ -492,12 +518,12 @@ void Raven_PathPlanner::show_Center()
 
 	if(ArmType == LEFT_ARM)
 	{
-		cout<<"\tCenter[LEFT]("<<x<<","<<y<<","<<z<<")"<<endl;
+		cout<<"\tCenter[LEFT] = ("<<x<<","<<y<<","<<z<<")"<<endl;
 
 	}
 	else if(ArmType == RIGHT_ARM)
 	{
-		cout<<"\tCenter[RIGHT]("<<x<<","<<y<<","<<z<<")"<<endl;
+		cout<<"\tCenter[RIGHT] = ("<<x<<","<<y<<","<<z<<")"<<endl;
 	}
 }
 
@@ -520,12 +546,12 @@ void Raven_PathPlanner::show_delPos()
 
 	if(ArmType == LEFT_ARM)
 	{
-		cout<<"\tdelPos[LEFT]("<<x<<","<<y<<","<<z<<")"<<endl;
+		cout<<"\tdelPos[LEFT] = ("<<x<<","<<y<<","<<z<<")"<<endl;
 
 	}
 	else if(ArmType == RIGHT_ARM)
 	{
-		cout<<"\tdelPos[RIGHT]("<<x<<","<<y<<","<<z<<")"<<endl;
+		cout<<"\tdelPos[RIGHT] = ("<<x<<","<<y<<","<<z<<")"<<endl;
 	}
 	
 	
@@ -574,7 +600,10 @@ tf::Transform Raven_PathPlanner::ComputeCircleTrajectory()
 
 			if(Distance == 0) // exactly at center
 			{
-				Delta_Pos.setValue(0,Speed,0); 	
+				if(Base_Plane == XZ_PLANE)
+					Delta_Pos.setValue(Speed,0,0); 	
+				else
+					Delta_Pos.setValue(0,Speed,0); 	
 			}
 			else // either inside of outside circle
 			{
@@ -930,21 +959,56 @@ tf::Vector3 Raven_PathPlanner::AutoCircleMotion4()
 {
 	tfScalar del_angle;
 	tf::Vector3 now_Vector,nxt_Vector,del_Vector;
-	tf::Vector3 X_AXIS(1,0,0);
 
 	now_Vector = Current_Pos - Center;
-	now_Vector.setX(0);
+
+	switch(Base_Plane)
+	{
+		case YZ_PLANE:
+			now_Vector.setX(0);
+		break;
+		case XZ_PLANE:
+			now_Vector.setY(0);
+		break;
+		case XY_PLANE:
+			now_Vector.setZ(0);
+		break;
+	}
+
 	now_Vector = now_Vector.normalized()*Radius;
 
 	del_angle = min(2*asin(Speed/(2*Radius)) , M_PI/8 );
 
-	nxt_Vector = now_Vector.rotate(X_AXIS,del_angle*Direction);
+	switch(Base_Plane)
+	{
+		case YZ_PLANE:
+			nxt_Vector = now_Vector.rotate(X_AXIS,del_angle*Direction);
+		break;
+		case XZ_PLANE:
+			nxt_Vector = now_Vector.rotate(Y_AXIS,del_angle*Direction);
+		break;
+		case XY_PLANE:
+			nxt_Vector = now_Vector.rotate(Z_AXIS,del_angle*Direction);
+		break;
+	}
 
 	del_Vector = nxt_Vector - now_Vector;
 
 	if(del_Vector.length() > Speed)	
 		del_Vector = del_Vector.normalized()*Speed;
-	del_Vector.setX(0);
+
+	switch(Base_Plane)
+	{
+		case YZ_PLANE:
+			del_Vector.setX(0);
+		break;
+		case XZ_PLANE:
+			del_Vector.setY(0);
+		break;
+		case XY_PLANE:
+			del_Vector.setZ(0);
+		break;
+	}
 
 	return  del_Vector;
 }
@@ -965,7 +1029,19 @@ tf::Vector3 Raven_PathPlanner::TuneRadiusMotion()
 	tf::Vector3 now_Vector,del_Vector;
 
 	now_Vector = Current_Pos - Center;
-	now_Vector.setX(0);
+	
+	switch(Base_Plane)
+	{
+		case YZ_PLANE:
+			now_Vector.setX(0);
+		break;
+		case XZ_PLANE:
+			now_Vector.setY(0);
+		break;
+		case XY_PLANE:
+			now_Vector.setZ(0);
+		break;
+	}
 
 	if(Distance > Radius + STATE_THRESHOLD) // out of circle : need to move back in
 	{
