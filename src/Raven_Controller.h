@@ -9,6 +9,7 @@ class Raven_Controller
 		int RADIUS;
 		int SPEED;
 		int DIRECTION;
+		int BASE_PLANE;
 		int PUB_COUNT;
 		int SUB_COUNT;
 		bool SHOW_STATUS;
