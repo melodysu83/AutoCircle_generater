@@ -57,6 +57,7 @@ void Raven_Controller::init_sys()
 	this->RADIUS = 1;
 	this->SPEED = 1;
 	this->DIRECTION = 1;
+	this-> BASE_PLANE =  YZ_PLANE;
 
 	this->PUB_COUNT = 0;
 	this->SUB_COUNT = 0;
@@ -123,6 +124,11 @@ void Raven_Controller::init_pathplanner()
 		ROS_ERROR("Fail to set circle direction. Exiting!");
 		exit(1);
 	}
+	if(!LEFT_PATH.set_BasePlane(BASE_PLANE) || !RIGHT_PATH.set_BasePlane(BASE_PLANE))
+	{
+		ROS_ERROR("Fail to set circle base plane. Exiting!");
+		exit(1);
+	}
 
 }
 
@@ -146,7 +152,8 @@ void Raven_Controller::init_words()
 		cout<<"Welcome to the Auto Circle Generator for RAVEN2"<<endl<<endl;
 		cout<<"Default settings: RADIUS = "<<RADIUS<<endl;
 		cout<<"                  SPEED = "<<SPEED<<endl;
-		cout<<"                  DIRECTION = "<<DIRECTION<<endl<<endl;
+		cout<<"                  DIRECTION = "<<DIRECTION<<endl;
+		cout<<"                  BASE = Y-Z plane"<<endl<<endl;
 		cout<<"Please press \"Enter\" to start!";
 		cin.clear();
 		getline(std::cin,start);
@@ -181,6 +188,7 @@ bool Raven_Controller::menu_words(bool print_menu)
 		cout<<"\t'6' : Toggle pause/resume "<<endl;
 		cout<<"\t'7' : Toggle console messages"<<endl;
 		cout<<"\t'8' : Set as Circle Center."<<endl;
+		cout<<"\t'9' : Change Circle Base Plane."<<endl;
 		cout<<"\t'^C': Quit"<<endl<<endl;
 	}
 	return false;
@@ -286,6 +294,14 @@ void* Raven_Controller::console_process(void)
 					LEFT_PATH.set_Radius(RADIUS);
 					RIGHT_PATH.set_Radius(RADIUS);
 
+					// [DANGER]: related to modification parameter tuning
+					// observation from experiments
+					if(RADIUS < SMALL_RADIUS)	
+						SPEED = (SPEED > SMALL_RADIUS_MAX_SPEED) ? SMALL_RADIUS_MAX_SPEED : SPEED;
+
+					LEFT_PATH.set_Speed(SPEED);
+					RIGHT_PATH.set_Speed(SPEED);
+
 					cout<<"You chose 2 : Decrease Circle Radius."<<endl;
 					cout<<"\tnew RADIUS = "<<RADIUS<<endl;
 					print_menu = true;
@@ -297,6 +313,8 @@ void* Raven_Controller::console_process(void)
 
 					// [DANGER]: related to modification parameter tuning
 					// observation from experiments
+					if(BASE_PLANE != YZ_PLANE)
+						SPEED = (SPEED > VERTICLE_CIRCLE_MAX_SPEED) ? VERTICLE_CIRCLE_MAX_SPEED : SPEED;
 					if(RADIUS < SMALL_RADIUS)	
 						SPEED = (SPEED > SMALL_RADIUS_MAX_SPEED) ? SMALL_RADIUS_MAX_SPEED : SPEED;
 
@@ -368,6 +386,29 @@ void* Raven_Controller::console_process(void)
 					cout<<CURR_RAVEN_STATE.pos[1]<<","<<CURR_RAVEN_STATE.pos[2]<<")"<<endl;
 					cout<<"\tnew Center[RIGHT]: X,Y,Z = ("<<CURR_RAVEN_STATE.pos[3]<<",";
 					cout<<CURR_RAVEN_STATE.pos[4]<<","<<CURR_RAVEN_STATE.pos[5]<<")"<<endl;
+					print_menu = true;
+					break;
+				}
+				case '9':
+				{
+					LEFT_PATH.set_Center(CURR_RAVEN_STATE.pos);   // important step to avoid confusion.
+					RIGHT_PATH.set_Center(CURR_RAVEN_STATE.pos);
+
+					BASE_PLANE = (BASE_PLANE + 1) % 3;
+					LEFT_PATH.set_BasePlane(BASE_PLANE);
+					RIGHT_PATH.set_BasePlane(BASE_PLANE);
+
+					SPEED = (SPEED > CHANGE_BASEPLANE_MAX_SPEED) ? CHANGE_BASEPLANE_MAX_SPEED : SPEED;
+					LEFT_PATH.set_Speed(SPEED);
+					RIGHT_PATH.set_Speed(SPEED);
+
+					cout<<"You chose 9 : Change Circle Base Plane."<<endl;
+					if(BASE_PLANE == YZ_PLANE)
+						cout<<"\tChange to Y-Z plane."<<endl; // default setting
+					else if(BASE_PLANE == XZ_PLANE)
+						cout<<"\tChange to X-Z plane."<<endl;
+					else
+						cout<<"\tChange to X-Y plane."<<endl;
 					print_menu = true;
 					break;
 				}
@@ -519,7 +560,6 @@ void Raven_Controller::publish_raven_automove()
 	// (1) wrap up the new command	
 	msg_raven_automove.hdr.stamp = msg_raven_automove.hdr.stamp.now(); //hdr
 
-
 	tf::transformTFToMsg(TF_INCR[LEFT_ARM], msg_raven_automove.tf_incr[LEFT_ARM]);   //tf_incr
 	tf::transformTFToMsg(TF_INCR[RIGHT_ARM], msg_raven_automove.tf_incr[RIGHT_ARM]);
 
@@ -639,10 +679,29 @@ void Raven_Controller::output_STATUS()
 	tfScalar k = LEFT_PATH.get_K();
 
         cout<<"current AutoCircle status :"<<endl;
+
+	switch(BASE_PLANE)
+	{	
+		case YZ_PLANE:
+			cout<<"\tBASE   = Y-Z plane";
+		break;
+		case XZ_PLANE:
+			cout<<"\tBASE   = X-Z plane";
+		break;
+		case XY_PLANE:
+			cout<<"\tBASE   = X-Y plane";
+		break;
+	}
+	
+	if(DIRECTION > 0)
+		cout<<"\t(Counter-Clockwise circle)"<<endl;
+	else
+		cout<<"\t(Clockwise circle)"<<endl;
+
 	cout<<"\tRADIUS = "<<R<<"~"<<(R+dR)<<" cm \t(level "<<RADIUS<<")"<<endl;
 	cout<<"\tSPEED  = "<<SP<<" cm/sec\t(level "<<SPEED<<")"<<endl;
-	cout<<"\tK      = "<<k<<" (the regulating term: 0~1)"<<endl<<endl;
-	
+	cout<<"\tK      = "<<k<<" \t(Regulating Term: 0~1)"<<endl<<endl;
+
 	/*
 	// [DANGER]: for modification parameter tuning only
 	tfScalar modi_scale = LEFT_PATH.get_Modi_Scale();
@@ -672,17 +731,17 @@ void Raven_Controller::output_PATHinfo()
 {
 	cout<<"current PathPlanner status : "<<endl;
 	
-	LEFT_PATH.show_Center();
-	//RIGHT_PATH.show_Center(); 	//(RIGHT_ARM unused right now)
-
 	LEFT_PATH.show_delPos();
 	//RIGHT_PATH.show_delPos(); 	//(RIGHT_ARM unused right now)
-	
-	LEFT_PATH.show_PathState();
-	//RIGHT_PATH.show_PathState(); 	//(RIGHT_ARM unused right now)
+
+	LEFT_PATH.show_Center();
+	//RIGHT_PATH.show_Center(); 	//(RIGHT_ARM unused right now)
 	
 	LEFT_PATH.show_Distance();
 	//RIGHT_PATH.show_Distance(); 	//(RIGHT_ARM unused right now)
+
+	LEFT_PATH.show_PathState();
+	//RIGHT_PATH.show_PathState(); 	//(RIGHT_ARM unused right now)
 	cout<<endl<<endl;
 		
 }
