@@ -5,7 +5,7 @@ project(AutoCircle_generater)
 find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs geometry_msgs message_generation)
 
 ## Add in message and service files
-add_message_files(FILES raven_automove.msg ravenstate.msg)
+add_message_files(FILES raven_automove.msg raven_state.msg)
 
 ## Generate added messages and services
 generate_messages(DEPENDENCIES std_msgs geometry_msgs)
