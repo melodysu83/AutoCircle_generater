@@ -15,8 +15,8 @@
 #include <pthread.h>
 #include <termios.h>
 #include <queue>
-#include "/home/biorobotics/rosworkspace/src/raven_2/msg_gen/cpp/include/raven_2/raven_automove.h"
-#include "/home/biorobotics/rosworkspace/src/raven_2/msg_gen/cpp/include/raven_2/raven_state.h"
+#include "/raven_2/raven_automove.h"
+#include "/raven_2/raven_state.h"
 
 #define LEFT_ARM 0
 #define RIGHT_ARM 1
