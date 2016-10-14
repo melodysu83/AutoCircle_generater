@@ -511,8 +511,9 @@ void* Raven_Controller::ros_process(void)
 			else 
 			{
 				// normal moving case
+				//TF_INCR[LEFT_ARM] = LEFT_PATH.ComputeNullTrajectory(); 
 				TF_INCR[LEFT_ARM] = LEFT_PATH.ComputeCircleTrajectory();
-				TF_INCR[RIGHT_ARM] = RIGHT_PATH.ComputeNullTrajectory();
+				TF_INCR[RIGHT_ARM] = RIGHT_PATH.ComputeCircleTrajectory();
 
 			}
 
